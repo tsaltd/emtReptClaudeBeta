@@ -1,0 +1,116 @@
+@model MessageSearchViewModel
+@{ ViewData["Title"] = "Messages"; }
+
+<!-- Filter Bar -->
+<div class="card mb-4 border-0 shadow-sm">
+    <div class="card-body py-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1">Search</label>
+                <input id="f-search" type="text" class="form-control form-control-sm"
+                       placeholder="Subject, sender, snippet…" value="@Model.SearchTerm" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold text-muted mb-1">Run</label>
+                @{
+                    var runOptions = new System.Text.StringBuilder();
+                    runOptions.Append("<option value=\"\">All Runs</option>");
+                    foreach (var r in Model.AvailableRuns)
+                    {
+                        var lbl = r.SourceLabel != null ? $"{r.DisplayWindow} ({r.SourceLabel})" : r.DisplayWindow;
+                        var sel = (Model.RunId == r.RunId) ? " selected" : "";
+                        runOptions.Append($"<option value=\"{r.RunId}\"{sel}>{lbl}</option>");
+                    }
+                }
+                <select id="f-run" class="form-select form-select-sm">
+                    @Html.Raw(runOptions.ToString())
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold text-muted mb-1">Rating</label>
+                @{
+                    var ratingOpts = new System.Text.StringBuilder();
+                    ratingOpts.Append("<option value=\"\">All Ratings</option>");
+                    foreach (var r in Model.AvailableRatings)
+                    {
+                        var sel = (Model.RatingFilter == r.RatingName) ? " selected" : "";
+                        ratingOpts.Append($"<option value=\"{r.RatingName}\"{sel}>{r.RatingName}</option>");
+                    }
+                }
+                <select id="f-rating" class="form-select form-select-sm">
+                    @Html.Raw(ratingOpts.ToString())
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold text-muted mb-1">Date From</label>
+                <input id="f-date-from" type="date" class="form-control form-control-sm" value="@Model.DateFrom" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold text-muted mb-1">Date To</label>
+                <input id="f-date-to" type="date" class="form-control form-control-sm" value="@Model.DateTo" />
+            </div>
+            <div class="col-md-1">
+                <button id="btn-clear" class="btn btn-outline-secondary btn-sm w-100">Clear</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results count -->
+<div class="d-flex align-items-center justify-content-between mb-2 px-1">
+    <span id="result-count" class="text-muted small">@Model.TotalCount message(s)</span>
+    <span class="text-muted small">Page <span id="page-indicator">@Model.Page</span> of @Model.TotalPages</span>
+</div>
+
+<!-- Table -->
+<div id="message-table-container">
+    @await Html.PartialAsync("_MessageRows", Model)
+</div>
+
+@section Scripts {
+<script>
+    let msgTimer, currentPage = 1;
+
+    function getFilters(page) {
+        return {
+            searchTerm:   $('#f-search').val(),
+            runId:        $('#f-run').val(),
+            ratingFilter: $('#f-rating').val(),
+            dateFrom:     $('#f-date-from').val(),
+            dateTo:       $('#f-date-to').val(),
+            page:         page || 1,
+            pageSize:     50
+        };
+    }
+
+    function refresh(page) {
+        currentPage = page || 1;
+        const params = $.param(getFilters(currentPage));
+        $.get('/Message/Rows?' + params, function(html) {
+            $('#message-table-container').html(html);
+            $('#page-indicator').text(currentPage);
+        });
+    }
+
+    // Debounced search
+    $('#f-search').on('input', function() {
+        clearTimeout(msgTimer);
+        msgTimer = setTimeout(() => refresh(1), 300);
+    });
+
+    // Instant on dropdowns / dates
+    $('#f-run, #f-rating, #f-date-from, #f-date-to').on('change', () => refresh(1));
+
+    // Clear
+    $('#btn-clear').on('click', function() {
+        $('#f-search, #f-date-from, #f-date-to').val('');
+        $('#f-run, #f-rating').val('');
+        refresh(1);
+    });
+
+    // Pagination (delegated — rows are replaced by AJAX)
+    $(document).on('click', '.page-btn', function() {
+        refresh(parseInt($(this).data('page')));
+    });
+</script>
+}

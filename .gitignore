@@ -1,0 +1,47 @@
+# ================================================================
+#  EmailTracker .gitignore
+#  ASP.NET Core 8 + SQLite + Visual Studio Community
+# ================================================================
+
+# ── DATABASE — NEVER COMMIT ─────────────────────────────────────
+# Contains real Gmail data — must stay local only
+*.db
+*.db-shm
+*.db-wal
+db_runtime/
+
+# ── VISUAL STUDIO ────────────────────────────────────────────────
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ── BUILD OUTPUT ─────────────────────────────────────────────────
+bin/
+obj/
+out/
+publish/
+
+# ── ASP.NET CORE ─────────────────────────────────────────────────
+# Local secrets — never commit
+appsettings.Production.json
+secrets.json
+**/secrets.json
+
+# ── RIDER / JETBRAINS ────────────────────────────────────────────
+.idea/
+*.sln.iml
+
+# ── OS FILES ─────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ── NODE (if any tooling added later) ────────────────────────────
+node_modules/
+npm-debug.log
+
+# ── LOGS ─────────────────────────────────────────────────────────
+*.log
+logs/

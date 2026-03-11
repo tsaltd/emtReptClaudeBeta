@@ -1,0 +1,40 @@
+@model RunListViewModel
+
+<div class="table-card">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Window</th>
+                <th>Source Label</th>
+                <th class="text-center">Messages</th>
+                <th class="text-center">Senders</th>
+                <th>Started</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Runs.Any())
+            {
+                <tr><td colspan="7" class="text-center text-muted py-4">No runs found.</td></tr>
+            }
+            @foreach (var r in Model.Runs)
+            {
+                <tr>
+                    <td class="text-muted small">@r.RunId</td>
+                    <td><strong>@r.DisplayWindow</strong></td>
+                    <td class="text-muted small">@(r.SourceLabel ?? "—")</td>
+                    <td class="text-center"><span class="badge bg-primary rounded-pill">@r.MessageCount</span></td>
+                    <td class="text-center"><span class="badge bg-secondary rounded-pill">@r.SenderCount</span></td>
+                    <td class="text-muted small">@r.StartedAt</td>
+                    <td>
+                        <a asp-controller="Run" asp-action="Detail" asp-route-id="@r.RunId"
+                           class="btn btn-sm btn-outline-primary">Detail →</a>
+                        <a asp-controller="Message" asp-action="Index" asp-route-runId="@r.RunId"
+                           class="btn btn-sm btn-outline-secondary ms-1">Messages</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

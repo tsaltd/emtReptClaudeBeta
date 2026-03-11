@@ -1,0 +1,79 @@
+@model RunDetailViewModel
+@{ ViewData["Title"] = $"Run #{Model.RunId}"; }
+
+<div class="mb-3">
+    <a asp-controller="Run" asp-action="Index" class="btn btn-sm btn-outline-secondary">← Back to Runs</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-number text-primary">@Model.MessageCount.ToString("N0")</div>
+                <div class="stat-label">Messages</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-number text-success">@Model.SenderCount</div>
+                <div class="stat-label">Unique Senders</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card stat-card">
+            <div class="card-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-4 text-muted">Window</dt>
+                    <dd class="col-8">@Model.WindowStart → @Model.WindowEnd</dd>
+                    <dt class="col-4 text-muted">Label</dt>
+                    <dd class="col-8">@(Model.SourceLabel ?? "—")</dd>
+                    <dt class="col-4 text-muted">Started</dt>
+                    <dd class="col-8">@Model.StartedAt</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex gap-2 mb-3">
+    <a asp-controller="Message" asp-action="Index" asp-route-runId="@Model.RunId"
+       class="btn btn-primary"><i class="fas fa-envelope me-2"></i>Browse Messages</a>
+    <a asp-controller="Sender" asp-action="Index"
+       class="btn btn-outline-secondary"><i class="fas fa-users me-2"></i>All Senders</a>
+</div>
+
+@if (Model.TopSenders.Any())
+{
+    <div class="table-card">
+        <div class="p-3 border-bottom">
+            <h6 class="mb-0 fw-bold">Top Senders in This Run</h6>
+        </div>
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th class="text-center">Messages</th>
+                    <th>Rating</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in Model.TopSenders)
+                {
+                    <tr>
+                        <td><code class="text-primary">@s.EmailAddress</code></td>
+                        <td class="text-center"><span class="badge bg-primary rounded-pill">@s.MsgCount</span></td>
+                        <td><span class="badge bg-secondary">@s.RatingName</span></td>
+                        <td>
+                            <a asp-controller="Sender" asp-action="Detail" asp-route-id="@s.SenderId"
+                               class="btn btn-sm btn-outline-primary">View</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

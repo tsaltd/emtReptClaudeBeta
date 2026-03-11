@@ -1,0 +1,105 @@
+@model SenderBrowseViewModel
+
+<div id="browse-card" class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom d-flex align-items-center justify-content-between py-3 px-4">
+
+        
+        <span class="badge bg-dark fs-6 px-3 py-2 font-monospace">
+            @Model.PositionLabel
+        </span>
+
+        
+        <span class="d-flex align-items-center gap-2">
+            <i class="fas fa-envelope text-muted"></i>
+            <span class="fs-5 fw-bold text-primary">@Model.MsgCount.ToString("N0")</span>
+            <span class="text-muted small">messages</span>
+        </span>
+
+    </div>
+
+    <div class="card-body px-4 py-4">
+
+        
+        <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted text-uppercase ls-1">
+                Canonical Email Address
+            </label>
+            <div class="input-group">
+                <span class="input-group-text bg-light"><i class="fas fa-at text-muted"></i></span>
+                <input type="text" class="form-control font-monospace text-primary fw-semibold"
+                       value="@Model.EmailAddress" readonly />
+                <button class="btn btn-outline-secondary" type="button"
+                        onclick="navigator.clipboard.writeText('@Model.EmailAddress')"
+                        title="Copy to clipboard">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+        </div>
+
+        
+        <div class="mb-4">
+            <label class="form-label small fw-semibold text-muted text-uppercase">Display Name</label>
+            <input type="text" class="form-control text-muted"
+                   value="@(Model.DisplayName ?? "—")" readonly />
+        </div>
+
+        
+        <div class="mb-4">
+            <label class="form-label small fw-semibold text-muted text-uppercase" for="rating-select">
+                Rating
+            </label>
+            <select id="rating-select"
+                    class="form-select"
+                    data-sender-id="@Model.SenderId"
+                    data-original-rating="@Model.RatingId">
+                @foreach (var r in Model.AvailableRatings)
+                {
+                    if (r.RatingId == Model.RatingId)
+                    {
+                        <option value="@r.RatingId" selected>@r.RatingName</option>
+                    }
+                    else
+                    {
+                        <option value="@r.RatingId">@r.RatingName</option>
+                    }
+                }
+            </select>
+        </div>
+
+        
+        <div class="row g-2 text-center">
+            <div class="col-6">
+                <div class="bg-light rounded p-2">
+                    <div class="small text-muted">First Seen</div>
+                    <div class="fw-semibold small">
+                        @(string.IsNullOrEmpty(Model.FirstSeen) ? "—"
+                          : DateTime.TryParse(Model.FirstSeen, out var fs) ? fs.ToString("MMM d, yyyy") : Model.FirstSeen)
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="bg-light rounded p-2">
+                    <div class="small text-muted">Last Seen</div>
+                    <div class="fw-semibold small">
+                        @(string.IsNullOrEmpty(Model.LastSeen) ? "—"
+                          : DateTime.TryParse(Model.LastSeen, out var ls) ? ls.ToString("MMM d, yyyy") : Model.LastSeen)
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    
+    <input type="hidden" id="nav-current-index" value="@Model.CurrentIndex" />
+    <input type="hidden" id="nav-total"         value="@Model.TotalSenders" />
+    <input type="hidden" id="nav-has-prev"      value="@Model.HasPrev.ToString().ToLower()" />
+    <input type="hidden" id="nav-has-next"      value="@Model.HasNext.ToString().ToLower()" />
+    <input type="hidden" id="nav-has-prev20"    value="@Model.HasPrev20.ToString().ToLower()" />
+    <input type="hidden" id="nav-has-next20"    value="@Model.HasNext20.ToString().ToLower()" />
+    <input type="hidden" id="nav-prev-idx"      value="@Model.PrevIndex" />
+    <input type="hidden" id="nav-next-idx"      value="@Model.NextIndex" />
+    <input type="hidden" id="nav-prev20-idx"    value="@Model.Prev20Index" />
+    <input type="hidden" id="nav-next20-idx"    value="@Model.Next20Index" />
+
+</div>

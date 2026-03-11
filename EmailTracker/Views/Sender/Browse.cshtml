@@ -1,0 +1,183 @@
+@model SenderBrowseViewModel
+@{ ViewData["Title"] = "Browse Senders"; }
+
+@* Anti-forgery token for AJAX POST *@
+@Html.AntiForgeryToken()
+
+<div class="row justify-content-center">
+    <div class="col-lg-7 col-md-9">
+
+        @* ── Top nav bar ──────────────────────────────────────── *@
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <a asp-controller="Sender" asp-action="Index"
+               class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-list me-1"></i> All Senders
+            </a>
+            <span class="text-muted small">Sorted by message count, highest first</span>
+        </div>
+
+        @* ── The swappable card ───────────────────────────────── *@
+        <div id="browse-card-wrapper">
+            @await Html.PartialAsync("_BrowseCard", Model)
+        </div>
+
+        @* ── Navigation buttons ───────────────────────────────── *@
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body py-3 px-4">
+
+                @* PREV 20 / NEXT 20 row *@
+                <div class="d-flex justify-content-between mb-2">
+                    <button id="btn-prev20"
+                            class="btn btn-outline-secondary btn-sm"
+                            @(!Model.HasPrev20 ? "disabled" : "")>
+                        <i class="fas fa-angles-left me-1"></i> Prev 20
+                    </button>
+                    <button id="btn-next20"
+                            class="btn btn-outline-secondary btn-sm"
+                            @(!Model.HasNext20 ? "disabled" : "")>
+                        Next 20 <i class="fas fa-angles-right ms-1"></i>
+                    </button>
+                </div>
+
+                @* PREV / NEXT row *@
+                <div class="d-flex justify-content-between">
+                    <button id="btn-prev"
+                            class="btn btn-primary"
+                            style="min-width:130px"
+                            @(!Model.HasPrev ? "disabled" : "")>
+                        <i class="fas fa-chevron-left me-1"></i> Prev
+                    </button>
+
+                    @* Jump-to-index input *@
+                    <div class="input-group" style="max-width:160px">
+                        <input id="jump-input" type="number" min="1" max="@Model.TotalSenders"
+                               class="form-control form-control-sm text-center"
+                               placeholder="Go to #" />
+                        <button id="btn-jump" class="btn btn-outline-secondary btn-sm">Go</button>
+                    </div>
+
+                    <button id="btn-next"
+                            class="btn btn-primary"
+                            style="min-width:130px"
+                            @(!Model.HasNext ? "disabled" : "")>
+                        Next <i class="fas fa-chevron-right ms-1"></i>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        @* ── Messages link ─────────────────────────────────────── *@
+        <div class="mt-3 text-center">
+            <a id="view-messages-link"
+               href="/Message?senderId=@Model.SenderId"
+               class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-envelope me-1"></i>
+                Browse messages from this sender
+            </a>
+        </div>
+
+    </div>
+</div>
+
+@* ── Toast ────────────────────────────────────────────────────── *@
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:9999">
+    <div id="rating-toast" class="toast align-items-center border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body" id="toast-msg">Rating saved.</div>
+            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    'use strict';
+
+    var toast = new bootstrap.Toast(document.getElementById('rating-toast'), { delay: 2000 });
+    var token = $('input[name="__RequestVerificationToken"]').val();
+
+    // ── Navigate to index ─────────────────────────────────────────
+    function navigateTo(idx) {
+        $.get('/Sender/Browse', { index: idx, partial: true }, function (html) {
+            $('#browse-card-wrapper').html(html);
+            updateNavButtons();
+            updateMessagesLink();
+            history.pushState(null, '', '/Sender/Browse?index=' + idx);
+        });
+    }
+
+    // ── Read nav state from hidden fields in the card ─────────────
+    function nav(id) { return $('#' + id).val(); }
+
+    function updateNavButtons() {
+        $('#btn-prev'  ).prop('disabled', nav('nav-has-prev')   !== 'true');
+        $('#btn-next'  ).prop('disabled', nav('nav-has-next')   !== 'true');
+        $('#btn-prev20').prop('disabled', nav('nav-has-prev20') !== 'true');
+        $('#btn-next20').prop('disabled', nav('nav-has-next20') !== 'true');
+    }
+
+    function updateMessagesLink() {
+        var sid = $('#rating-select').data('sender-id');
+        $('#view-messages-link').attr('href', '/Message?senderId=' + sid);
+    }
+
+    // ── Nav button clicks ─────────────────────────────────────────
+    $(document).on('click', '#btn-prev',   function () { navigateTo(parseInt(nav('nav-prev-idx')));   });
+    $(document).on('click', '#btn-next',   function () { navigateTo(parseInt(nav('nav-next-idx')));   });
+    $(document).on('click', '#btn-prev20', function () { navigateTo(parseInt(nav('nav-prev20-idx'))); });
+    $(document).on('click', '#btn-next20', function () { navigateTo(parseInt(nav('nav-next20-idx'))); });
+
+    // ── Jump to # ─────────────────────────────────────────────────
+    $(document).on('click', '#btn-jump', function () {
+        var val  = parseInt($('#jump-input').val());
+        var max  = parseInt(nav('nav-total'));
+        if (isNaN(val) || val < 1 || val > max) return;
+        navigateTo(val - 1);   // user enters 1-based, we store 0-based
+        $('#jump-input').val('');
+    });
+
+    $(document).on('keydown', '#jump-input', function (e) {
+        if (e.key === 'Enter') $('#btn-jump').trigger('click');
+    });
+
+    // ── Rating dropdown: save immediately on change ───────────────
+    $(document).on('change', '#rating-select', function () {
+        var senderId = $(this).data('sender-id');
+        var ratingId = parseInt($(this).val());
+
+        $.ajax({
+            url:         '/Sender/UpdateRating',
+            method:      'POST',
+            contentType: 'application/json',
+            headers:     { 'RequestVerificationToken': token },
+            data:        JSON.stringify({ senderId: senderId, ratingId: ratingId }),
+            success: function (res) {
+                if (res.success) {
+                    $('#toast-msg').text('Rating saved: ' + res.ratingName);
+                    $('#rating-toast').removeClass('bg-danger').addClass('bg-success text-white');
+                } else {
+                    $('#toast-msg').text('Error: ' + res.message);
+                    $('#rating-toast').removeClass('bg-success').addClass('bg-danger text-white');
+                }
+                toast.show();
+            },
+            error: function () {
+                $('#toast-msg').text('Network error — rating not saved.');
+                $('#rating-toast').addClass('bg-danger text-white');
+                toast.show();
+            }
+        });
+    });
+
+    // ── Browser back / forward ────────────────────────────────────
+    window.addEventListener('popstate', function () {
+        var params = new URLSearchParams(window.location.search);
+        var idx    = parseInt(params.get('index') || '0');
+        navigateTo(idx);
+    });
+
+})();
+</script>
+}

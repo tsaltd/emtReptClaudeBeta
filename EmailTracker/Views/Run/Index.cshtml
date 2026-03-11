@@ -1,0 +1,25 @@
+@model RunListViewModel
+@{ ViewData["Title"] = "Runs"; }
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <input id="run-search" type="text" class="form-control" style="max-width:320px"
+           placeholder="Search by label…" value="@Model.SearchTerm" />
+    <span class="text-muted small">@Model.TotalRuns run(s)</span>
+</div>
+
+<div id="run-table-container">
+    @await Html.PartialAsync("_RunRows", Model)
+</div>
+
+@section Scripts {
+<script>
+    let runSearchTimer;
+    $('#run-search').on('input', function () {
+        clearTimeout(runSearchTimer);
+        const term = $(this).val();
+        runSearchTimer = setTimeout(() => {
+            loadPartial('/Run/Rows?search=' + encodeURIComponent(term), '#run-table-container');
+        }, 300);
+    });
+</script>
+}

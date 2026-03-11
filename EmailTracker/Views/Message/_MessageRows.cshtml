@@ -1,0 +1,97 @@
+@model MessageSearchViewModel
+
+<div class="table-card">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Subject / Run</th>
+                <th>Snippet</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Messages.Any())
+            {
+                <tr><td colspan="3" class="text-center text-muted py-4">No messages match your filters.</td></tr>
+            }
+            @foreach (var senderGroup in Model.Messages.GroupBy(m => new { m.SenderId, m.EmailAddress, m.RatingName }))
+            {
+                var seenRuns = new HashSet<int>();
+
+                <!-- CEA header -->
+                <tr class="table-light">
+                    <td colspan="3" class="py-1 px-3 text-center">
+                        <span class="rounded-pill d-inline-block me-2"
+                              style="width:12px;height:12px;background-color:@senderGroup.Key.RatingName.ToLower();vertical-align:middle"></span>
+                        <a asp-controller="Sender" asp-action="Detail" asp-route-id="@senderGroup.Key.SenderId"
+                           class="text-decoration-none">
+                            <code class="fw-bold fs-5 text-dark">@senderGroup.Key.EmailAddress</code>
+                        </a>
+                        <span class="text-muted small ms-2">@senderGroup.Count() message(s)</span>
+                    </td>
+                </tr>
+                @foreach (var rawGroup in senderGroup.GroupBy(m => m.FromRaw))
+                {
+                    <!-- from_raw sub-header -->
+                    var rawDisplay = string.IsNullOrWhiteSpace(rawGroup.Key)
+                        ? "—"
+                        : System.Text.RegularExpressions.Regex.Replace(rawGroup.Key, @"\s*<[^>]+>", "").Trim();
+                    if (string.IsNullOrWhiteSpace(rawDisplay)) rawDisplay = "—";
+                    <tr class="table-secondary">
+                        <td colspan="3" class="py-1 px-5 text-muted fs-6">
+                            <span class="rounded-pill d-inline-block me-2"
+                                  style="width:10px;height:10px;background-color:@senderGroup.Key.RatingName.ToLower();vertical-align:middle"></span>
+                            @rawDisplay
+                        </td>
+                    </tr>
+                    @foreach (var subjectGroup in rawGroup.GroupBy(m => m.Subject))
+                    {
+                        var firstRunId  = subjectGroup.First().RunId;
+                        var showRun     = seenRuns.Add(firstRunId);
+
+                        <!-- subject row with run # (suppressed if already shown for this CEA) -->
+                        <tr>
+                            <td colspan="2" class="py-1 fw-semibold fs-6" style="padding-left:calc(5rem + 1.2em);text-indent:-1.2em">&#8226;&nbsp;
+                                @(subjectGroup.Key ?? "—")
+                            </td>
+                            <td class="py-1 small text-muted text-end">
+                                @if (showRun)
+                                {
+                                    <a asp-controller="Run" asp-action="Detail" asp-route-id="@firstRunId"
+                                       class="text-decoration-none text-muted">#@firstRunId</a>
+                                }
+                            </td>
+                        </tr>
+                        @foreach (var m in subjectGroup.Where(m => !string.IsNullOrWhiteSpace(m.Snippet) || !string.IsNullOrWhiteSpace(m.InternalDate)))
+                        {
+                            <tr>
+                                <td class="text-muted small text-nowrap" style="padding-left:3rem">@m.DisplayDate</td>
+                                <td></td>
+                                <td class="text-muted small" style="max-width:450px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                                    @m.Snippet
+                                </td>
+                            </tr>
+                        }
+                    }
+                }
+            }
+        </tbody>
+    </table>
+
+    <!-- Pagination -->
+    @if (Model.TotalPages > 1)
+    {
+        <div class="p-3 border-top d-flex justify-content-center">
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    @for (int p = 1; p <= Model.TotalPages; p++)
+                    {
+                        <li class="page-item @(p == Model.Page ? "active" : "")">
+                            <button class="page-link page-btn" data-page="@p">@p</button>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        </div>
+    }
+</div>

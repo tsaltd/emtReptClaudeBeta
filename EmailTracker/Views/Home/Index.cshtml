@@ -1,0 +1,75 @@
+@model DashboardViewModel
+@{ ViewData["Title"] = "Dashboard"; }
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card stat-card bg-primary text-white">
+            <div class="card-body">
+                <div class="stat-number">@Model.TotalRuns</div>
+                <div class="stat-label" style="color:rgba(255,255,255,.7)">Total Runs</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card bg-success text-white">
+            <div class="card-body">
+                <div class="stat-number">@Model.TotalMessages.ToString("N0")</div>
+                <div class="stat-label" style="color:rgba(255,255,255,.7)">Total Messages</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card bg-warning text-dark">
+            <div class="card-body">
+                <div class="stat-number">@Model.TotalSenders.ToString("N0")</div>
+                <div class="stat-label">Unique Senders</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.MostRecentRun != null)
+{
+    <div class="alert alert-info d-flex align-items-center gap-3 mb-4">
+        <i class="fas fa-clock fa-lg"></i>
+        <div>
+            <strong>Most recent run:</strong> @Model.MostRecentRun.DisplayWindow
+            @if (!string.IsNullOrEmpty(Model.MostRecentRun.SourceLabel))
+            { <span class="text-muted ms-2">— @Model.MostRecentRun.SourceLabel</span> }
+            <span class="ms-3 badge bg-primary">@Model.MostRecentRun.MessageCount messages</span>
+            <span class="ms-1 badge bg-secondary">@Model.MostRecentRun.SenderCount senders</span>
+            <a asp-controller="Run" asp-action="Detail" asp-route-id="@Model.MostRecentRun.RunId"
+               class="btn btn-sm btn-outline-primary ms-3">View Run →</a>
+        </div>
+    </div>
+}
+
+<div class="table-card">
+    <div class="p-3 border-bottom d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-bold"><i class="fas fa-users me-2 text-muted"></i>Top Senders (All Time)</h6>
+        <a asp-controller="Sender" asp-action="Index" class="btn btn-sm btn-outline-secondary">View All</a>
+    </div>
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Email Address</th>
+                <th>Display Name</th>
+                <th class="text-center">Messages</th>
+                <th>Rating</th>
+                <th>Last Seen</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Model.TopSenders)
+            {
+                <tr onclick="window.location='/Sender/Detail/@s.SenderId'" style="cursor:pointer">
+                    <td><code class="text-primary">@s.EmailAddress</code></td>
+                    <td class="text-muted small">@(s.DisplayName ?? "—")</td>
+                    <td class="text-center"><span class="badge bg-primary rounded-pill">@s.MsgCount</span></td>
+                    <td><span class="badge badge-rating bg-secondary">@s.RatingName</span></td>
+                    <td class="text-muted small">@s.DisplayLastSeen</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

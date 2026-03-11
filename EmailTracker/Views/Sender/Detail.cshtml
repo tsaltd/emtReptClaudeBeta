@@ -1,0 +1,109 @@
+@model SenderDetailViewModel
+@{ ViewData["Title"] = Model.EmailAddress; }
+
+<div class="mb-3">
+    <a asp-controller="Sender" asp-action="Index" class="btn btn-sm btn-outline-secondary">← Back to Senders</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="mb-1"><code class="text-primary">@Model.EmailAddress</code></h5>
+                @if (!string.IsNullOrEmpty(Model.DisplayName))
+                {
+                    <p class="text-muted mb-2">@Model.DisplayName</p>
+                }
+                <dl class="row small mb-0 mt-3">
+                    <dt class="col-3 text-muted">Rating</dt>
+                    <dd class="col-9"><span class="badge bg-secondary">@Model.RatingName</span></dd>
+                    <dt class="col-3 text-muted">Total Messages</dt>
+                    <dd class="col-9"><span class="badge bg-primary rounded-pill">@Model.MsgCount</span></dd>
+                    <dt class="col-3 text-muted">First Seen</dt>
+                    <dd class="col-9">@(Model.FirstSeen ?? "—")</dd>
+                    <dt class="col-3 text-muted">Last Seen</dt>
+                    <dd class="col-9">@(Model.LastSeen ?? "—")</dd>
+                    <dt class="col-3 text-muted">Record Created</dt>
+                    <dd class="col-9 text-muted">@Model.CreatedAt</dd>
+                    <dt class="col-3 text-muted">Last Updated</dt>
+                    <dd class="col-9 text-muted">@Model.UpdatedAt</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex flex-column justify-content-center align-items-center text-center">
+                <div class="stat-number text-primary">@Model.MsgCount</div>
+                <div class="stat-label">Total Messages Sent</div>
+                <a asp-controller="Message" asp-action="Index" asp-route-senderId="@Model.SenderId"
+                   class="btn btn-primary btn-sm mt-3">
+                    <i class="fas fa-envelope me-2"></i>Browse All Messages
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.FromRawBreakdown.Any())
+{
+    <div class="table-card mb-3">
+        <div class="p-3 border-bottom">
+            <h6 class="mb-0 fw-bold">From Display Names Used by This Sender</h6>
+        </div>
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>From (Raw)</th>
+                    <th>Messages</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var f in Model.FromRawBreakdown)
+                {
+                    <tr>
+                        <td class="small">@f.FromRaw</td>
+                        <td><span class="badge bg-primary rounded-pill">@f.MsgCount</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (Model.RecentMessages.Any())
+{
+    <div class="table-card">
+        <div class="p-3 border-bottom">
+            <h6 class="mb-0 fw-bold">Recent Messages from This Sender</h6>
+        </div>
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>From (Raw)</th>
+                    <th>Subject</th>
+                    <th>Snippet</th>
+                    <th>Run</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var m in Model.RecentMessages)
+                {
+                    <tr>
+                        <td class="text-muted small text-nowrap">@m.DisplayDate</td>
+                        <td class="small text-muted" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="@m.FromRaw">@(m.FromRaw ?? "—")</td>
+                        <td class="small">@(m.Subject ?? "—")</td>
+                        <td class="text-muted small" style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                            @(m.Snippet ?? "")
+                        </td>
+                        <td class="text-muted small">
+                            <a asp-controller="Run" asp-action="Detail" asp-route-id="@m.RunId"
+                               class="text-decoration-none text-muted">#@m.RunId</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

@@ -1,0 +1,56 @@
+@model SenderSearchViewModel
+
+<div class="table-card">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Canonical Email</th>
+                <th>Display Name</th>
+                <th class="text-center">Msg Count</th>
+                <th>Rating</th>
+                <th>First Seen</th>
+                <th>Last Seen</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Senders.Any())
+            {
+                <tr><td colspan="7" class="text-center text-muted py-4">No senders found.</td></tr>
+            }
+            @foreach (var s in Model.Senders)
+            {
+                <tr>
+                    <td><code class="text-primary small">@s.EmailAddress</code></td>
+                    <td class="text-muted small">@(s.DisplayName ?? "—")</td>
+                    <td class="text-center"><span class="badge bg-primary rounded-pill">@s.MsgCount</span></td>
+                    <td><span class="badge bg-secondary badge-rating">@s.RatingName</span></td>
+                    <td class="text-muted small">@s.DisplayFirstSeen</td>
+                    <td class="text-muted small">@s.DisplayLastSeen</td>
+                    <td>
+                        <a asp-controller="Sender" asp-action="Detail" asp-route-id="@s.SenderId"
+                           class="btn btn-sm btn-outline-primary">Detail</a>
+                        <a asp-controller="Message" asp-action="Index" asp-route-senderId="@s.SenderId"
+                           class="btn btn-sm btn-outline-secondary ms-1">Messages</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="p-3 border-top d-flex justify-content-center">
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    @for (int p = 1; p <= Model.TotalPages; p++)
+                    {
+                        <li class="page-item @(p == Model.Page ? "active" : "")">
+                            <button class="page-link page-btn" data-page="@p">@p</button>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        </div>
+    }
+</div>
