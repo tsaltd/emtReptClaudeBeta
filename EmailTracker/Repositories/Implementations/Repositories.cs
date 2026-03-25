@@ -158,10 +158,14 @@ public class SenderRepository : ISenderRepository
         string? searchTerm,
         string? ratingFilter,
         int     page,
-        int     pageSize)
+        int     pageSize,
+        bool    sortAsc = false)
     {
         var q = BuildQuery(searchTerm, ratingFilter);
-        return await q.OrderByDescending(s => s.MsgCount)
+        var ordered = sortAsc
+            ? q.OrderBy(s => s.MsgCount)
+            : q.OrderByDescending(s => s.MsgCount);
+        return await ordered
                       .Skip((page - 1) * pageSize)
                       .Take(pageSize)
                       .ToListAsync();
@@ -213,6 +217,14 @@ public class SenderRepository : ISenderRepository
             .OrderByDescending(s => s.MsgCount)
             .Take(take)
             .ToListAsync();
+    }
+
+    public async Task UpdateRatingBulkAsync(IEnumerable<int> senderIds, int ratingId)
+    {
+        var ids = senderIds.ToList();
+        await _db.Senders
+            .Where(s => ids.Contains(s.SenderId))
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.RatingId, ratingId));
     }
 
     private IQueryable<VSenderWithRating> BuildQuery(string? searchTerm, string? ratingFilter)

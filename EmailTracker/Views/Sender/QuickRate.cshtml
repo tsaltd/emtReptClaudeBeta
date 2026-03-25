@@ -1,0 +1,348 @@
+@model SenderSearchViewModel
+@{ ViewData["Title"] = "Quick Rate"; }
+@Html.AntiForgeryToken()
+
+@section Styles {
+<style>
+    /* ── Bulk action bar ─────────────────────────────────────────── */
+    #bulk-bar {
+        display: none;
+        align-items: center;
+        gap: .75rem;
+        background: #1e2533;
+        color: #e9ecef;
+        padding: .5rem 1rem;
+        font-size: .82rem;
+        border-bottom: 2px solid #0d6efd;
+        flex-wrap: wrap;
+    }
+    #bulk-bar.visible { display: flex; }
+    #bulk-count { font-weight: 700; color: #7eb8ff; min-width: 80px; }
+    #bulk-bar .bulk-rating-btn {
+        border-radius: 999px;
+        font-size: .75rem;
+        padding: .2rem .85rem;
+        border: 2px solid rgba(0,0,0,.2);
+        cursor: pointer;
+        font-weight: 600;
+        color: #000;
+        transition: all .1s;
+        opacity: .82;
+    }
+    #bulk-bar .bulk-rating-btn:hover  { opacity: 1; border-color: rgba(0,0,0,.5); }
+    #bulk-bar .bulk-rating-btn.chosen { opacity: 1; border-color: #000; border-width: 3px; }
+    #bulk-bar .bulk-rating-btn.chosen::before { content: '✓ '; }
+    #btn-bulk-apply {
+        border-radius: 0;
+        font-size: .78rem;
+        padding: .25rem .9rem;
+    }
+    #btn-deselect {
+        font-size: .75rem;
+        color: #adb5bd;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        text-decoration: underline;
+    }
+    #btn-deselect:hover { color: #fff; }
+
+    /* ── Row selection ───────────────────────────────────────────── */
+    tr.selected td { background: #e7efff !important; }
+    .row-cb { cursor: pointer; width: 16px; height: 16px; }
+
+    /* ── Individual rating cell ──────────────────────────────────── */
+    .rating-cell { min-width: 150px; }
+</style>
+}
+
+@* ── Search bar ──────────────────────────────────────────────── *@
+<form method="get" asp-controller="Sender" asp-action="QuickRate" class="card border-0 shadow-sm mb-0">
+    <div class="card-body py-2 px-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label small fw-semibold text-muted mb-1">Search</label>
+                <input name="searchTerm" type="text" class="form-control form-control-sm"
+                       placeholder="Email or display name…" value="@Model.SearchTerm" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1">Rating</label>
+                <select name="ratingFilter" class="form-select form-select-sm">
+                    <option value="">All Ratings</option>
+                    @foreach (var r in Model.AvailableRatings)
+                    {
+                        if (Model.RatingFilter == r.RatingName)
+                        { <option value="@r.RatingName" selected>@r.RatingName</option> }
+                        else
+                        { <option value="@r.RatingName">@r.RatingName</option> }
+                    }
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary btn-sm">Search</button>
+            </div>
+            <div class="col-auto">
+                <a asp-controller="Sender" asp-action="QuickRate" class="btn btn-outline-secondary btn-sm">Clear</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+@* ── Bulk action bar ──────────────────────────────────────────── *@
+<div id="bulk-bar">
+    <span id="bulk-count">0 selected</span>
+    <span class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.4px">Set to →</span>
+    @foreach (var r in Model.AvailableRatings)
+    {
+        <button class="bulk-rating-btn"
+                style="background:@r.RatingName"
+                data-rating-id="@r.RatingId"
+                data-rating-name="@r.RatingName">@r.RatingName</button>
+    }
+    <button id="btn-bulk-apply" class="btn btn-primary btn-sm" disabled>Apply</button>
+    <button id="btn-deselect">clear selection</button>
+</div>
+
+@* ── Results count ────────────────────────────────────────────── *@
+<div class="d-flex justify-content: space-between align-items-center px-1 py-1 border-bottom">
+    <span class="text-muted small">@Model.TotalCount.ToString("N0") sender(s) &nbsp;·&nbsp; Page @Model.Page of @Model.TotalPages</span>
+</div>
+
+@* ── Table ───────────────────────────────────────────────────── *@
+<div class="table-card">
+    <table class="table table-hover table-sm mb-0" style="font-size:.85rem">
+        <thead>
+            <tr>
+                <th style="width:36px">
+                    <input type="checkbox" id="cb-all" class="row-cb" title="Select all on page" />
+                </th>
+                <th>Canonical Email</th>
+                <th>Display Name</th>
+                <th class="text-center" style="width:70px">Msgs</th>
+                <th style="width:100px">First Seen</th>
+                <th style="width:100px">Last Seen</th>
+                <th class="rating-cell">Rating</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Senders.Any())
+            {
+                <tr><td colspan="7" class="text-center text-muted py-4">No senders found.</td></tr>
+            }
+            @foreach (var s in Model.Senders)
+            {
+                <tr data-sender-id="@s.SenderId">
+                    <td>
+                        <input type="checkbox" class="row-cb sender-cb" value="@s.SenderId" />
+                    </td>
+                    <td>
+                        <a asp-controller="Sender" asp-action="Detail" asp-route-id="@s.SenderId"
+                           class="text-decoration-none">
+                            <code class="text-primary">@s.EmailAddress</code>
+                        </a>
+                    </td>
+                    <td class="text-muted">@(s.DisplayName ?? "—")</td>
+                    <td class="text-center">
+                        <span class="badge bg-primary rounded-pill">@s.MsgCount</span>
+                    </td>
+                    <td class="text-muted">@s.DisplayFirstSeen</td>
+                    <td class="text-muted">@s.DisplayLastSeen</td>
+                    <td class="rating-cell" onclick="event.stopPropagation()">
+                        <select class="form-select form-select-sm rating-select"
+                                data-sender-id="@s.SenderId">
+                            @foreach (var r in Model.AvailableRatings)
+                            {
+                                if (r.RatingId == s.RatingId)
+                                { <option value="@r.RatingId" selected>@r.RatingName</option> }
+                                else
+                                { <option value="@r.RatingId">@r.RatingName</option> }
+                            }
+                        </select>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @* ── Pagination ── *@
+    @if (Model.TotalPages > 1)
+    {
+        <div class="p-3 border-top d-flex align-items-center justify-content-between">
+            <a asp-controller="Sender" asp-action="QuickRate"
+               asp-route-searchTerm="@Model.SearchTerm"
+               asp-route-ratingFilter="@Model.RatingFilter"
+               asp-route-page="@(Model.Page - 1)"
+               class="btn btn-sm btn-outline-secondary @(Model.Page <= 1 ? "disabled" : "")">
+                <i class="fas fa-chevron-left me-1"></i> Prev
+            </a>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    @for (int p = Math.Max(1, Model.Page - 4); p <= Math.Min(Model.TotalPages, Model.Page + 4); p++)
+                    {
+                        <li class="page-item @(p == Model.Page ? "active" : "")">
+                            <a class="page-link"
+                               asp-controller="Sender" asp-action="QuickRate"
+                               asp-route-searchTerm="@Model.SearchTerm"
+                               asp-route-ratingFilter="@Model.RatingFilter"
+                               asp-route-page="@p">@p</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+            <a asp-controller="Sender" asp-action="QuickRate"
+               asp-route-searchTerm="@Model.SearchTerm"
+               asp-route-ratingFilter="@Model.RatingFilter"
+               asp-route-page="@(Model.Page + 1)"
+               class="btn btn-sm btn-outline-secondary @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                Next <i class="fas fa-chevron-right ms-1"></i>
+            </a>
+        </div>
+    }
+</div>
+
+@* ── Toast ────────────────────────────────────────────────────── *@
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:9999">
+    <div id="rating-toast" class="toast align-items-center border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body" id="toast-msg">Rating saved.</div>
+            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    var toast     = new bootstrap.Toast(document.getElementById('rating-toast'), { delay: 2500 });
+    var token     = $('input[name="__RequestVerificationToken"]').val();
+    var chosenId  = null;
+
+    // ── Individual row rating select ─────────────────────────────
+    $(document).on('change', '.rating-select', function () {
+        var senderId = $(this).data('sender-id');
+        var ratingId = parseInt($(this).val());
+        var $row = $(this).closest('tr');
+        postRating([senderId], ratingId, function (res) {
+            if (res.success) {
+                $row.addClass('table-success');
+                setTimeout(() => $row.removeClass('table-success'), 1500);
+                showToast('Saved: ' + res.ratingName, true);
+            } else {
+                showToast('Error: ' + res.message, false);
+            }
+        });
+    });
+
+    // ── Checkbox selection ───────────────────────────────────────
+    $('#cb-all').on('change', function () {
+        $('.sender-cb').prop('checked', this.checked);
+        $('.sender-cb').each(function () {
+            $(this).closest('tr').toggleClass('selected', this.checked);
+        });
+        updateBulkBar();
+    });
+
+    $(document).on('change', '.sender-cb', function () {
+        $(this).closest('tr').toggleClass('selected', this.checked);
+        var allChecked = $('.sender-cb').length === $('.sender-cb:checked').length;
+        $('#cb-all').prop('checked', allChecked);
+        updateBulkBar();
+    });
+
+    // Click row to toggle checkbox (not on links/selects)
+    $(document).on('click', 'tbody tr', function (e) {
+        if ($(e.target).is('a, select, option, input')) return;
+        var $cb = $(this).find('.sender-cb');
+        $cb.prop('checked', !$cb.prop('checked')).trigger('change');
+    });
+
+    // ── Bulk rating selection ────────────────────────────────────
+    $(document).on('click', '.bulk-rating-btn', function () {
+        $('.bulk-rating-btn').removeClass('chosen');
+        $(this).addClass('chosen');
+        chosenId = parseInt($(this).data('rating-id'));
+        $('#btn-bulk-apply').prop('disabled', false);
+    });
+
+    $('#btn-deselect').on('click', function () {
+        $('.sender-cb, #cb-all').prop('checked', false);
+        $('tbody tr').removeClass('selected');
+        updateBulkBar();
+    });
+
+    // ── Bulk apply ───────────────────────────────────────────────
+    $('#btn-bulk-apply').on('click', function () {
+        if (chosenId === null) return;
+        var ids = $('.sender-cb:checked').map(function () {
+            return parseInt($(this).val());
+        }).get();
+        if (!ids.length) return;
+
+        postRatingBulk(ids, chosenId, function (res) {
+            if (res.success) {
+                // Update each affected row's select
+                ids.forEach(function (sid) {
+                    var $row = $('tr[data-sender-id="' + sid + '"]');
+                    $row.find('.rating-select').val(chosenId);
+                    $row.addClass('table-success');
+                    setTimeout(() => $row.removeClass('table-success'), 1500);
+                });
+                showToast('Applied "' + res.ratingName + '" to ' + res.count + ' sender(s)', true);
+                // Deselect all
+                $('.sender-cb, #cb-all').prop('checked', false);
+                $('tbody tr').removeClass('selected');
+                chosenId = null;
+                updateBulkBar();
+            } else {
+                showToast('Error: ' + res.message, false);
+            }
+        });
+    });
+
+    // ── Helpers ──────────────────────────────────────────────────
+    function updateBulkBar() {
+        var n = $('.sender-cb:checked').length;
+        $('#bulk-count').text(n + ' selected');
+        if (n > 0) {
+            $('#bulk-bar').addClass('visible');
+        } else {
+            $('#bulk-bar').removeClass('visible');
+            $('.bulk-rating-btn').removeClass('chosen');
+            chosenId = null;
+            $('#btn-bulk-apply').prop('disabled', true);
+        }
+    }
+
+    function postRating(senderIds, ratingId, cb) {
+        $.ajax({
+            url: '/Sender/UpdateRating', method: 'POST',
+            contentType: 'application/json',
+            headers: { 'RequestVerificationToken': token },
+            data: JSON.stringify({ senderId: senderIds[0], ratingId: ratingId }),
+            success: cb,
+            error: function () { showToast('Network error — not saved.', false); }
+        });
+    }
+
+    function postRatingBulk(senderIds, ratingId, cb) {
+        $.ajax({
+            url: '/Sender/UpdateRatingBulk', method: 'POST',
+            contentType: 'application/json',
+            headers: { 'RequestVerificationToken': token },
+            data: JSON.stringify({ senderIds: senderIds, ratingId: ratingId }),
+            success: cb,
+            error: function () { showToast('Network error — not saved.', false); }
+        });
+    }
+
+    function showToast(msg, success) {
+        $('#toast-msg').text(msg);
+        $('#rating-toast')
+            .toggleClass('bg-success text-white', success)
+            .toggleClass('bg-danger text-white', !success);
+        toast.show();
+    }
+})();
+</script>
+}

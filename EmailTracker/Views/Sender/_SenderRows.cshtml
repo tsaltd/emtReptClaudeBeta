@@ -30,6 +30,8 @@
                     <td>
                         <a asp-controller="Sender" asp-action="Detail" asp-route-id="@s.SenderId"
                            class="btn btn-sm btn-outline-primary">Detail</a>
+                        <a asp-controller="Sender" asp-action="Summary" asp-route-id="@s.SenderId"
+                           class="btn btn-sm btn-outline-info ms-1">Summary</a>
                         <a asp-controller="Message" asp-action="Index" asp-route-senderId="@s.SenderId"
                            class="btn btn-sm btn-outline-secondary ms-1">Messages</a>
                     </td>

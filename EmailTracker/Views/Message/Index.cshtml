@@ -1,70 +1,249 @@
 @model MessageSearchViewModel
 @{ ViewData["Title"] = "Messages"; }
 
-<!-- Filter Bar -->
-<div class="card mb-4 border-0 shadow-sm">
-    <div class="card-body py-3">
-        <div class="row g-2 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold text-muted mb-1">Search</label>
-                <input id="f-search" type="text" class="form-control form-control-sm"
-                       placeholder="Subject, sender, snippet…" value="@Model.SearchTerm" />
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small fw-semibold text-muted mb-1">Run</label>
-                @{
-                    var runOptions = new System.Text.StringBuilder();
-                    runOptions.Append("<option value=\"\">All Runs</option>");
-                    foreach (var r in Model.AvailableRuns)
-                    {
-                        var lbl = r.SourceLabel != null ? $"{r.DisplayWindow} ({r.SourceLabel})" : r.DisplayWindow;
-                        var sel = (Model.RunId == r.RunId) ? " selected" : "";
-                        runOptions.Append($"<option value=\"{r.RunId}\"{sel}>{lbl}</option>");
-                    }
+@section Styles {
+<style>
+    /* ── Filter bar ──────────────────────────────────────────────── */
+    .msg-filter {
+        background: #fff;
+        border: 1px solid #ced4da;
+        padding: .875rem 1rem;
+        margin-bottom: 0;
+    }
+    .msg-filter .f-label {
+        font-size: .68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .65px;
+        color: #868e96;
+        margin-bottom: .2rem;
+    }
+    .msg-filter .form-control,
+    .msg-filter .form-select {
+        border-radius: 0;
+        border-color: #ced4da;
+        font-size: .8rem;
+        height: 30px;
+        padding: .2rem .5rem;
+    }
+    .msg-filter .form-control:focus,
+    .msg-filter .form-select:focus {
+        box-shadow: none;
+        border-color: #0d6efd;
+    }
+    #btn-clear {
+        border-radius: 0;
+        font-size: .75rem;
+        height: 30px;
+        padding: 0 .75rem;
+    }
+
+    /* ── Status strip ────────────────────────────────────────────── */
+    .msg-status {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #1e2533;
+        color: #868e96;
+        font-size: .72rem;
+        font-weight: 500;
+        letter-spacing: .4px;
+        padding: .35rem 1rem;
+        text-transform: uppercase;
+    }
+    .msg-status strong { color: #e9ecef; font-weight: 700; }
+
+    /* ── Table shell ─────────────────────────────────────────────── */
+    .msg-wrap {
+        border: 1px solid #ced4da;
+        border-top: none;
+        background: #fff;
+    }
+    .msg-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+    /* ── Column widths ───────────────────────────────────────────── */
+    .msg-table .col-date    { width: 140px; }
+    .msg-table .col-subject { width: auto; }
+    .msg-table .col-run     { width: 56px; }
+
+    /* ── Header ──────────────────────────────────────────────────── */
+    .msg-table thead th {
+        background: #f1f3f5;
+        padding: .45rem 1rem;
+        font-size: .68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .6px;
+        color: #868e96;
+        border-bottom: 2px solid #dee2e6;
+        white-space: nowrap;
+    }
+
+    /* ── CEA row ─────────────────────────────────────────────────── */
+    .msg-cea td {
+        background: #fff;
+        padding: .6rem 1rem;
+        border-top: 3px solid #dee2e6;
+        border-bottom: 1px solid #dee2e6;
+        text-align: center;
+    }
+    .msg-cea-pill {
+        display: inline-block;
+        min-width: 320px;
+        padding: .35rem 1.75rem;
+        border-radius: 999px;
+        text-align: center;
+        line-height: 1.4;
+    }
+    .msg-cea-link {
+        font-family: 'Arial Black', Arial, sans-serif;
+        font-size: .9rem;
+        font-weight: 900;
+        color: #000;
+        text-decoration: none;
+        letter-spacing: -.2px;
+        word-break: break-all;
+    }
+    .msg-cea-link:hover { color: #333; text-decoration: underline; }
+    .msg-cea-count {
+        font-size: .65rem;
+        color: rgba(0,0,0,.55);
+        margin-left: .5rem;
+        letter-spacing: .3px;
+    }
+
+    /* ── from_raw row ────────────────────────────────────────────── */
+    .msg-raw td {
+        background: #f8f9fa;
+        padding: .3rem 1rem .3rem 1.25rem;
+        border-bottom: 1px solid #e9ecef;
+        font-size: 1rem;
+        color: #495057;
+        font-style: italic;
+        text-decoration: underline;
+        border-left: 3px solid #dee2e6;
+    }
+
+    /* ── Subject row ─────────────────────────────────────────────── */
+    .msg-subject td {
+        background: #fff;
+        padding: .35rem 1rem .35rem 2rem;
+        border-bottom: 1px solid #f1f3f5;
+        font-size: .875rem;
+        font-weight: 600;
+        color: #212529;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .msg-subject .run-link {
+        font-size: .7rem;
+        color: #868e96;
+        text-decoration: none;
+        font-weight: 400;
+    }
+    .msg-subject .run-link:hover { color: #0d6efd; }
+
+    /* ── Leaf row ────────────────────────────────────────────────── */
+    .msg-leaf td {
+        background: #fff;
+        padding: .2rem 1rem .2rem 2.75rem;
+        border-bottom: 1px solid #f8f8f8;
+        font-size: .775rem;
+        color: #868e96;
+    }
+    .msg-leaf .cell-snippet {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* ── Empty state ─────────────────────────────────────────────── */
+    .msg-empty td {
+        text-align: center;
+        padding: 3rem;
+        color: #868e96;
+        font-size: .875rem;
+    }
+
+    /* ── Pagination ──────────────────────────────────────────────── */
+    .msg-pager {
+        display: flex;
+        justify-content: center;
+        padding: .6rem;
+        border-top: 1px solid #dee2e6;
+        background: #f8f9fa;
+    }
+    .msg-pager .page-link { border-radius: 0 !important; font-size: .775rem; }
+</style>
+}
+
+<!-- Filter bar -->
+<div class="msg-filter">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <div class="f-label">Search</div>
+            <input id="f-search" type="text" class="form-control"
+                   placeholder="Subject, sender, snippet…" value="@Model.SearchTerm" />
+        </div>
+        <div class="col-md-2">
+            <div class="f-label">Run</div>
+            @{
+                var runOptions = new System.Text.StringBuilder();
+                runOptions.Append("<option value=\"\">All Runs</option>");
+                foreach (var r in Model.AvailableRuns)
+                {
+                    var lbl = r.SourceLabel != null ? $"{r.DisplayWindow} ({r.SourceLabel})" : r.DisplayWindow;
+                    var sel = (Model.RunId == r.RunId) ? " selected" : "";
+                    runOptions.Append($"<option value=\"{r.RunId}\"{sel}>{lbl}</option>");
                 }
-                <select id="f-run" class="form-select form-select-sm">
-                    @Html.Raw(runOptions.ToString())
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small fw-semibold text-muted mb-1">Rating</label>
-                @{
-                    var ratingOpts = new System.Text.StringBuilder();
-                    ratingOpts.Append("<option value=\"\">All Ratings</option>");
-                    foreach (var r in Model.AvailableRatings)
-                    {
-                        var sel = (Model.RatingFilter == r.RatingName) ? " selected" : "";
-                        ratingOpts.Append($"<option value=\"{r.RatingName}\"{sel}>{r.RatingName}</option>");
-                    }
+            }
+            <select id="f-run" class="form-select">@Html.Raw(runOptions.ToString())</select>
+        </div>
+        <div class="col-md-2">
+            <div class="f-label">Rating</div>
+            @{
+                var ratingOpts = new System.Text.StringBuilder();
+                ratingOpts.Append("<option value=\"\">All Ratings</option>");
+                foreach (var r in Model.AvailableRatings)
+                {
+                    var sel = (Model.RatingFilter == r.RatingName) ? " selected" : "";
+                    ratingOpts.Append($"<option value=\"{r.RatingName}\"{sel}>{r.RatingName}</option>");
                 }
-                <select id="f-rating" class="form-select form-select-sm">
-                    @Html.Raw(ratingOpts.ToString())
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small fw-semibold text-muted mb-1">Date From</label>
-                <input id="f-date-from" type="date" class="form-control form-control-sm" value="@Model.DateFrom" />
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small fw-semibold text-muted mb-1">Date To</label>
-                <input id="f-date-to" type="date" class="form-control form-control-sm" value="@Model.DateTo" />
-            </div>
-            <div class="col-md-1">
-                <button id="btn-clear" class="btn btn-outline-secondary btn-sm w-100">Clear</button>
-            </div>
+            }
+            <select id="f-rating" class="form-select">@Html.Raw(ratingOpts.ToString())</select>
+        </div>
+        <div class="col-md-2">
+            <div class="f-label">Date From</div>
+            <input id="f-date-from" type="date" class="form-control" value="@Model.DateFrom" />
+        </div>
+        <div class="col-md-2">
+            <div class="f-label">Date To</div>
+            <input id="f-date-to" type="date" class="form-control" value="@Model.DateTo" />
+        </div>
+        <div class="col-md-1 d-flex align-items-end">
+            <button id="btn-clear" class="btn btn-outline-secondary w-100">
+                <i class="fas fa-times me-1"></i>Clear
+            </button>
         </div>
     </div>
 </div>
 
-<!-- Results count -->
-<div class="d-flex align-items-center justify-content-between mb-2 px-1">
-    <span id="result-count" class="text-muted small">@Model.TotalCount message(s)</span>
-    <span class="text-muted small">Page <span id="page-indicator">@Model.Page</span> of @Model.TotalPages</span>
+<!-- Status strip -->
+<div class="msg-status">
+    <span><strong id="result-count">@Model.TotalCount</strong> messages</span>
+    <span>Page <strong id="page-indicator">@Model.Page</strong> of @Model.TotalPages</span>
 </div>
 
 <!-- Table -->
-<div id="message-table-container">
-    @await Html.PartialAsync("_MessageRows", Model)
+<div class="msg-wrap">
+    <div id="message-table-container">
+        @await Html.PartialAsync("_MessageRows", Model)
+    </div>
 </div>
 
 @section Scripts {
@@ -92,23 +271,23 @@
         });
     }
 
-    // Debounced search
+    function updateCount(total) {
+        $('#result-count').text(total);
+    }
+
     $('#f-search').on('input', function() {
         clearTimeout(msgTimer);
         msgTimer = setTimeout(() => refresh(1), 300);
     });
 
-    // Instant on dropdowns / dates
     $('#f-run, #f-rating, #f-date-from, #f-date-to').on('change', () => refresh(1));
 
-    // Clear
     $('#btn-clear').on('click', function() {
         $('#f-search, #f-date-from, #f-date-to').val('');
         $('#f-run, #f-rating').val('');
         refresh(1);
     });
 
-    // Pagination (delegated — rows are replaced by AJAX)
     $(document).on('click', '.page-btn', function() {
         refresh(parseInt($(this).data('page')));
     });

@@ -1,0 +1,58 @@
+@model MessageBrowseViewModel
+@{
+    int rangeStart = (Model.SenderPage - 1) * Model.SenderPageSize + 1;
+    int rangeEnd   = Math.Min(Model.SenderPage * Model.SenderPageSize, Model.SenderTotal);
+
+    string NavUrl(int? id) => id.HasValue
+        ? (Url.Action("Browse", "Message", new { senderId = id, senderSearch = Model.SenderSearch, senderSortAsc = Model.SenderSortAsc }) ?? "#")
+        : "#";
+}
+
+<!-- Status -->
+<div class="sp-status">
+    @if (Model.SenderRank > 0)
+    {
+        <span>Sender <strong>#@Model.SenderRank</strong> of @Model.SenderTotal</span>
+    }
+    else
+    {
+        <span><strong>@Model.SenderTotal</strong> senders</span>
+    }
+</div>
+
+<!-- Sender list -->
+<ul class="sp-list">
+    @foreach (var s in Model.SenderList)
+    {
+        var active = s.SenderId == Model.SenderId ? " active" : "";
+        var url    = Url.Action("Browse", "Message", new { senderId = s.SenderId, senderSearch = Model.SenderSearch, senderSortAsc = Model.SenderSortAsc });
+        <li class="sp-item@(active)">
+            <a href="@url">
+                <span class="sp-email">@s.EmailAddress</span>
+                <span class="sp-count">@s.MsgCount</span>
+            </a>
+        </li>
+    }
+    @if (!Model.SenderList.Any())
+    {
+        <li style="padding:.75rem;font-size:.78rem;color:#868e96;text-align:center">No senders match.</li>
+    }
+</ul>
+
+<!-- Panel page nav -->
+<div class="sp-pager">
+    <button class="sp-pager-btn" data-page="@(Model.SenderPage - 1)"
+            @(Model.SenderPage <= 1 ? "disabled" : "")>‹ Prev</button>
+    <span>@rangeStart–@rangeEnd of @Model.SenderTotal</span>
+    <button class="sp-pager-btn" data-page="@(Model.SenderPage + 1)"
+            @(Model.SenderPage >= Model.SenderTotalPages ? "disabled" : "")>Next ›</button>
+</div>
+
+<!-- Sender ±1 / ±10 navigation -->
+<div class="sp-nav">
+    <a href="@NavUrl(Model.Prev10SenderId)" class="sp-nav-btn @(Model.Prev10SenderId == null ? "disabled" : "")">←10</a>
+    <a href="@NavUrl(Model.PrevSenderId)"   class="sp-nav-btn @(Model.PrevSenderId   == null ? "disabled" : "")">←1</a>
+    <span class="sp-pos">@(Model.SenderRank > 0 ? Model.SenderRank.ToString() : "—")</span>
+    <a href="@NavUrl(Model.NextSenderId)"   class="sp-nav-btn @(Model.NextSenderId   == null ? "disabled" : "")">1→</a>
+    <a href="@NavUrl(Model.Next10SenderId)" class="sp-nav-btn @(Model.Next10SenderId == null ? "disabled" : "")">10→</a>
+</div>

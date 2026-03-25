@@ -1,0 +1,373 @@
+@model MessageGroupedViewModel
+@{ ViewData["Title"] = "Messages by Sender"; }
+
+@section Styles {
+<style>
+    /* ── Filter / sort bar ───────────────────────────────────────── */
+    .grp-bar {
+        background: #fff;
+        border: 1px solid #ced4da;
+        padding: .75rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        flex-wrap: wrap;
+        margin-bottom: 0;
+    }
+    .grp-bar .f-label {
+        font-size: .67rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .6px;
+        color: #868e96;
+        margin-bottom: .15rem;
+    }
+    .grp-bar .form-control, .grp-bar .form-select {
+        border-radius: 0;
+        font-size: .8rem;
+        height: 30px;
+        padding: .2rem .5rem;
+    }
+    #btn-clear {
+        border-radius: 0;
+        font-size: .75rem;
+        height: 30px;
+        padding: 0 .75rem;
+    }
+    .sort-btn {
+        border-radius: 0;
+        font-size: .75rem;
+        height: 30px;
+        padding: 0 .75rem;
+        white-space: nowrap;
+    }
+    .sort-btn.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
+
+    /* ── Status strip ────────────────────────────────────────────── */
+    .grp-status {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #1e2533;
+        color: #868e96;
+        font-size: .72rem;
+        font-weight: 500;
+        letter-spacing: .4px;
+        padding: .35rem 1rem;
+        text-transform: uppercase;
+    }
+    .grp-status strong { color: #e9ecef; font-weight: 700; }
+
+    /* ── Table shell ─────────────────────────────────────────────── */
+    .grp-wrap {
+        border: 1px solid #ced4da;
+        border-top: none;
+        background: #fff;
+    }
+    .grp-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+    .grp-table .col-date    { width: 140px; }
+    .grp-table .col-subject { width: auto; }
+    .grp-table .col-run     { width: 56px; }
+    .grp-table thead th {
+        background: #f1f3f5;
+        padding: .45rem 1rem;
+        font-size: .68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .6px;
+        color: #868e96;
+        border-bottom: 2px solid #dee2e6;
+        white-space: nowrap;
+    }
+
+    /* ── CEA row ─────────────────────────────────────────────────── */
+    .msg-cea td {
+        background: #fff;
+        padding: .6rem 1rem;
+        border-top: 3px solid #dee2e6;
+        border-bottom: 1px solid #dee2e6;
+        text-align: center;
+    }
+    .msg-cea-pill {
+        display: inline-block;
+        min-width: 320px;
+        padding: .35rem 1.75rem;
+        border-radius: 999px;
+        text-align: center;
+        line-height: 1.4;
+    }
+    .msg-cea-link {
+        font-family: 'Arial Black', Arial, sans-serif;
+        font-size: .9rem;
+        font-weight: 900;
+        color: #000;
+        text-decoration: none;
+        letter-spacing: -.2px;
+        word-break: break-all;
+    }
+    .msg-cea-link:hover { color: #333; text-decoration: underline; }
+    .msg-cea-count { font-size: .65rem; color: rgba(0,0,0,.55); margin-left: .5rem; }
+    .msg-cea-browse { font-size: .68rem; margin-left: .75rem; text-decoration: none; color: #555; }
+    .msg-cea-browse:hover { color: #0d6efd; }
+
+    /* ── from_raw row ────────────────────────────────────────────── */
+    .msg-raw td {
+        background: #f8f9fa;
+        padding: .3rem 1rem .3rem 1.25rem;
+        border-bottom: 1px solid #e9ecef;
+        font-size: 1rem;
+        color: #495057;
+        font-style: italic;
+        text-decoration: underline;
+        border-left: 3px solid #dee2e6;
+    }
+
+    /* ── Subject row ─────────────────────────────────────────────── */
+    .msg-subject td {
+        background: #fff;
+        padding: .35rem 1rem .35rem 2rem;
+        border-bottom: 1px solid #f1f3f5;
+        font-size: .875rem;
+        font-weight: 600;
+        color: #212529;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .msg-subject .run-link {
+        font-size: .7rem;
+        color: #868e96;
+        text-decoration: none;
+        font-weight: 400;
+    }
+    .msg-subject .run-link:hover { color: #0d6efd; }
+
+    /* ── Leaf row ────────────────────────────────────────────────── */
+    .msg-leaf td {
+        background: #fff;
+        padding: .2rem 1rem .2rem 2.75rem;
+        border-bottom: 1px solid #f8f8f8;
+        font-size: .775rem;
+        color: #868e96;
+    }
+    .msg-leaf .cell-snippet {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* ── Empty ───────────────────────────────────────────────────── */
+    .grp-empty td {
+        text-align: center;
+        padding: 3rem;
+        color: #868e96;
+        font-size: .875rem;
+    }
+
+    /* ── Pagination ──────────────────────────────────────────────── */
+    .grp-pager {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: .6rem 1rem;
+        border-top: 1px solid #dee2e6;
+        background: #f8f9fa;
+    }
+    .grp-pager .page-link { border-radius: 0 !important; font-size: .775rem; }
+    .grp-pager-info { font-size: .75rem; color: #868e96; }
+</style>
+}
+
+@{
+    // Helpers to build sort/nav URLs
+    string SortUrl(string by, bool asc) =>
+        $"/Message/Grouped?sortBy={by}&sortAsc={asc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}&page=1&pageSize={Model.PageSize}";
+
+    string PageUrl(int p) =>
+        $"/Message/Grouped?sortBy={Model.SortBy}&sortAsc={Model.SortAsc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}&page={p}&pageSize={Model.PageSize}";
+
+    string BrowseUrl(int senderId) =>
+        $"/Message/Browse?senderId={senderId}";
+}
+
+<!-- Filter / sort bar -->
+<form method="get" action="/Message/Grouped" class="grp-bar">
+    <input type="hidden" name="sortBy"   value="@Model.SortBy" />
+    <input type="hidden" name="sortAsc"  value="@Model.SortAsc.ToString().ToLower()" />
+    <input type="hidden" name="pageSize" value="@Model.PageSize" />
+
+    <div>
+        <div class="f-label">Search CEA</div>
+        <input name="searchTerm" type="text" class="form-control" style="width:220px"
+               placeholder="Email address…" value="@Model.SearchTerm" />
+    </div>
+
+    <div>
+        <div class="f-label">Sort by #Msg</div>
+        <div class="btn-group">
+            <a href="@SortUrl("count", false)"
+               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "count" && !Model.SortAsc ? "active" : "")">↓ Most</a>
+            <a href="@SortUrl("count", true)"
+               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "count" && Model.SortAsc ? "active" : "")">↑ Least</a>
+        </div>
+    </div>
+
+    <div>
+        <div class="f-label">Sort by CEA</div>
+        <div class="btn-group">
+            <a href="@SortUrl("email", true)"
+               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "email" && Model.SortAsc ? "active" : "")">A → Z</a>
+            <a href="@SortUrl("email", false)"
+               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "email" && !Model.SortAsc ? "active" : "")">Z → A</a>
+        </div>
+    </div>
+
+    <div class="d-flex align-items-end" style="margin-top:auto">
+        <button type="submit" class="btn btn-primary sort-btn me-1">Apply</button>
+        <a href="/Message/Grouped" class="btn btn-outline-secondary" id="btn-clear">Clear</a>
+    </div>
+</form>
+
+<!-- Status strip -->
+<div class="grp-status">
+    <span>
+        <strong>@Model.TotalSenders</strong> senders ·
+        showing @((Model.Page - 1) * Model.PageSize + 1)–@(Math.Min(Model.Page * Model.PageSize, Model.TotalSenders))
+    </span>
+    <span>
+        Page <strong>@Model.Page</strong> of @Model.TotalPages ·
+        sorted by
+        <strong>@(Model.SortBy == "email" ? "email" : "#msg")</strong>
+        @(Model.SortAsc ? "↑ asc" : "↓ desc")
+    </span>
+</div>
+
+<!-- Tree table -->
+<div class="grp-wrap">
+    <table class="grp-table">
+        <thead>
+            <tr>
+                <th class="col-date">Date</th>
+                <th class="col-subject">Subject</th>
+                <th class="col-run text-end">Run</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.CeaGroups.Any())
+            {
+                <tr class="grp-empty"><td colspan="3">No senders match your filters.</td></tr>
+            }
+
+            @foreach (var cea in Model.CeaGroups)
+            {
+                var seenRuns = new HashSet<int>();
+
+                <!-- CEA pill row -->
+                <tr class="msg-cea">
+                    <td colspan="3">
+                        <span class="msg-cea-pill" style="background-color:@cea.RatingName">
+                            <a href="/Sender/Detail/@cea.SenderId" class="msg-cea-link">@cea.EmailAddress</a>
+                            <span class="msg-cea-count">@cea.MsgCount msg</span>
+                            <a href="@BrowseUrl(cea.SenderId)" class="msg-cea-browse" title="Browse messages">⇒ browse</a>
+                        </span>
+                    </td>
+                </tr>
+
+                @foreach (var rawGroup in cea.FromRawGroups)
+                {
+                    var rawDisplay = string.IsNullOrWhiteSpace(rawGroup.FromRaw)
+                        ? "—"
+                        : System.Text.RegularExpressions.Regex.Replace(rawGroup.FromRaw, @"\s*<[^>]+>", "").Trim();
+                    if (string.IsNullOrWhiteSpace(rawDisplay)) rawDisplay = "—";
+
+                    <tr class="msg-raw">
+                        <td colspan="3">@rawDisplay</td>
+                    </tr>
+
+                    @foreach (var subjectGroup in rawGroup.Messages.GroupBy(m => m.Subject))
+                    {
+                        var firstRunId = subjectGroup.First().RunId;
+                        var showRun    = seenRuns.Add(firstRunId);
+
+                        <tr class="msg-subject">
+                            <td colspan="2">&#8226;&nbsp;@(subjectGroup.Key ?? "—")</td>
+                            <td class="text-end pe-2">
+                                @if (showRun)
+                                {
+                                    <a href="/Run/Detail/@firstRunId" class="run-link">#@firstRunId</a>
+                                }
+                            </td>
+                        </tr>
+
+                        @foreach (var m in subjectGroup.Where(m => !string.IsNullOrWhiteSpace(m.Snippet) || !string.IsNullOrWhiteSpace(m.InternalDate)))
+                        {
+                            <tr class="msg-leaf">
+                                <td>@m.DisplayDate</td>
+                                <td class="cell-snippet" colspan="2">@m.Snippet</td>
+                            </tr>
+                        }
+                    }
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+@if (Model.TotalPages > 1)
+{
+    <div class="grp-pager">
+        <div>
+            @if (Model.HasPrev)
+            {
+                <a class="btn btn-outline-secondary btn-sm" style="border-radius:0"
+                   href="@PageUrl(Model.Page - 1)">‹ Prev 10</a>
+            }
+            else
+            {
+                <button class="btn btn-outline-secondary btn-sm" style="border-radius:0" disabled>‹ Prev 10</button>
+            }
+        </div>
+
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                @{
+                    int pStart = Math.Max(1, Model.Page - 4);
+                    int pEnd   = Math.Min(Model.TotalPages, pStart + 8);
+                }
+                @if (pStart > 1)
+                {
+                    <li class="page-item"><a class="page-link" href="@PageUrl(1)">1</a></li>
+                    @if (pStart > 2) { <li class="page-item disabled"><span class="page-link">…</span></li> }
+                }
+                @for (int p = pStart; p <= pEnd; p++)
+                {
+                    <li class="page-item @(p == Model.Page ? "active" : "")">
+                        <a class="page-link" href="@PageUrl(p)">@p</a>
+                    </li>
+                }
+                @if (pEnd < Model.TotalPages)
+                {
+                    @if (pEnd < Model.TotalPages - 1) { <li class="page-item disabled"><span class="page-link">…</span></li> }
+                    <li class="page-item"><a class="page-link" href="@PageUrl(Model.TotalPages)">@Model.TotalPages</a></li>
+                }
+            </ul>
+        </nav>
+
+        <div>
+            @if (Model.HasNext)
+            {
+                <a class="btn btn-outline-secondary btn-sm" style="border-radius:0"
+                   href="@PageUrl(Model.Page + 1)">Next 10 ›</a>
+            }
+            else
+            {
+                <button class="btn btn-outline-secondary btn-sm" style="border-radius:0" disabled>Next 10 ›</button>
+            }
+        </div>
+    </div>
+}

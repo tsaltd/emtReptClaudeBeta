@@ -97,14 +97,34 @@
         <a asp-controller="Run"     asp-action="Index"  class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Run"     ? "active" : "")">
             <i class="fas fa-layer-group"></i> Runs
         </a>
-        <a asp-controller="Message" asp-action="Index"  class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Message" ? "active" : "")">
+        <a asp-controller="Message" asp-action="Index"
+           class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Message" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")">
             <i class="fas fa-envelope"></i> Messages
+        </a>
+        <a asp-controller="Message" asp-action="Grouped"
+           class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Grouped" ? "active" : "")">
+            <i class="fas fa-layer-group"></i> CEA Groups
+        </a>
+        <a asp-controller="Message" asp-action="Browse"
+           class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Browse" && ViewContext.RouteData.Values["controller"]?.ToString() == "Message" ? "active" : "")">
+            <i class="fas fa-address-card"></i> Msg Browse
         </a>
         <a asp-controller="Sender"  asp-action="Index"  class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Sender" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")">
             <i class="fas fa-users"></i> Senders
         </a>
         <a asp-controller="Sender"  asp-action="Browse" class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Browse" ? "active" : "")">
             <i class="fas fa-address-card"></i> Browse Senders
+        </a>
+        <a asp-controller="Sender"  asp-action="Index"  class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Summary" ? "active" : "")"
+           title="Pick a sender from the list to view their summary">
+            <i class="fas fa-layer-group"></i> Sender Summary
+        </a>
+        <a asp-controller="Sender"  asp-action="QuickRate" class="@(ViewContext.RouteData.Values["action"]?.ToString() == "QuickRate" ? "active" : "")">
+            <i class="fas fa-star-half-alt"></i> Quick Rate
+        </a>
+        <hr style="border-color:#2d3139;margin:.5rem 1rem" />
+        <a asp-controller="GmailIngest" asp-action="Index" class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "GmailIngest" ? "active" : "")">
+            <i class="fas fa-download"></i> Gmail Ingest
         </a>
     </nav>
     <div class="sidebar-footer">v1.0 · SQLite</div>

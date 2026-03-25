@@ -110,6 +110,7 @@ public class SenderSearchViewModel
 {
     public string?  SearchTerm   { get; set; }
     public string?  RatingFilter { get; set; }
+    public bool     SortAsc      { get; set; }
     public int      Page         { get; set; } = 1;
     public int      PageSize     { get; set; } = 50;
 
@@ -125,6 +126,12 @@ public class FromRawSummaryViewModel
     public int    MsgCount { get; set; }
 }
 
+public class FromRawGroupViewModel
+{
+    public string                       FromRaw  { get; set; } = string.Empty;
+    public List<MessageRowViewModel>    Messages { get; set; } = [];
+}
+
 public class SenderDetailViewModel
 {
     public int     SenderId     { get; set; }
@@ -138,9 +145,34 @@ public class SenderDetailViewModel
     public string  CreatedAt    { get; set; } = string.Empty;
     public string  UpdatedAt    { get; set; } = string.Empty;
 
-    public IEnumerable<MessageRowViewModel>     RecentMessages    { get; set; } = [];
-    public IEnumerable<RatingOptionViewModel>   AvailableRatings  { get; set; } = [];
-    public IEnumerable<FromRawSummaryViewModel> FromRawBreakdown  { get; set; } = [];
+    public IEnumerable<RatingOptionViewModel>  AvailableRatings { get; set; } = [];
+    public IEnumerable<FromRawGroupViewModel>  FromRawGroups    { get; set; } = [];
+}
+
+public class SenderSummaryPageViewModel
+{
+    public int     SenderId     { get; set; }
+    public string  EmailAddress { get; set; } = string.Empty;
+    public string? DisplayName  { get; set; }
+    public int     MsgCount     { get; set; }
+    public int     RatingId     { get; set; }
+    public string  RatingName   { get; set; } = string.Empty;
+    public string? FirstSeen    { get; set; }
+    public string? LastSeen     { get; set; }
+
+    public IEnumerable<RatingOptionViewModel>  AvailableRatings { get; set; } = [];
+    public IEnumerable<FromRawGroupViewModel>  FromRawGroups    { get; set; } = [];
+
+    // ── Pagination ───────────────────────────────────────────────
+    public int  Page        { get; set; } = 1;
+    public int  PageSize    { get; set; } = 10;
+    public int  TotalGroups { get; set; }
+    public bool SortAsc     { get; set; }
+    public int  TotalPages  => (int)Math.Ceiling((double)TotalGroups / PageSize);
+    public bool HasPrev     => Page > 1;
+    public bool HasNext     => Page < TotalPages;
+    public int  PrevPage    => Page - 1;
+    public int  NextPage    => Page + 1;
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -184,6 +216,89 @@ public class SenderBrowseViewModel
 }
 
 // ════════════════════════════════════════════════════════════════
+//  MESSAGE GROUPED ViewModel  (CEA-paged tree view)
+// ════════════════════════════════════════════════════════════════
+
+public class CeaGroupViewModel
+{
+    public int     SenderId     { get; set; }
+    public string  EmailAddress { get; set; } = string.Empty;
+    public string  RatingName   { get; set; } = string.Empty;
+    public int     MsgCount     { get; set; }
+    public List<FromRawGroupViewModel> FromRawGroups { get; set; } = [];
+}
+
+public class MessageGroupedViewModel
+{
+    public string? SearchTerm   { get; set; }
+    public string  SortBy       { get; set; } = "count";   // "count" | "email"
+    public bool    SortAsc      { get; set; }
+    public int     Page         { get; set; } = 1;
+    public int     PageSize     { get; set; } = 10;
+    public int     TotalSenders { get; set; }
+    public int     TotalPages   => (int)Math.Ceiling((double)TotalSenders / PageSize);
+    public bool    HasPrev      => Page > 1;
+    public bool    HasNext      => Page < TotalPages;
+
+    public IEnumerable<CeaGroupViewModel> CeaGroups { get; set; } = [];
+}
+
+// ════════════════════════════════════════════════════════════════
+//  MESSAGE BROWSE ViewModel  (sender-panel navigator + message list)
+// ════════════════════════════════════════════════════════════════
+
+public class MessageBrowseViewModel
+{
+    // ── Current sender header ─────────────────────────────────────
+    public int     SenderId     { get; set; }
+    public string  EmailAddress { get; set; } = string.Empty;
+    public string  RatingName   { get; set; } = string.Empty;
+
+    // ── Message list (flat, paginated) ────────────────────────────
+    public IEnumerable<MessageRowViewModel> Messages    { get; set; } = [];
+    public int  MsgTotal    { get; set; }
+    public int  MsgPage     { get; set; } = 1;
+    public int  MsgPageSize { get; set; } = 50;
+    public int  MsgTotalPages => (int)Math.Ceiling((double)MsgTotal / MsgPageSize);
+
+    // ── Sender panel state ────────────────────────────────────────
+    public string? SenderSearch   { get; set; }
+    public bool    SenderSortAsc  { get; set; }
+    public int     SenderPage     { get; set; } = 1;
+    public int     SenderPageSize { get; set; } = 10;
+    public int     SenderTotal    { get; set; }
+    public int     SenderRank     { get; set; }   // 1-based; 0 = not in filtered list
+    public int SenderTotalPages   => (int)Math.Ceiling((double)SenderTotal / SenderPageSize);
+
+    public IEnumerable<SenderSummaryViewModel> SenderList      { get; set; } = [];
+    public int?    PrevSenderId   { get; set; }
+    public int?    NextSenderId   { get; set; }
+    public int?    Prev10SenderId { get; set; }
+    public int?    Next10SenderId { get; set; }
+
+    // ── Rating hotkeys ────────────────────────────────────────────
+    public IEnumerable<RatingOptionViewModel> AvailableRatings { get; set; } = [];
+}
+
+// ════════════════════════════════════════════════════════════════
+//  GMAIL INGEST ViewModel
+// ════════════════════════════════════════════════════════════════
+
+public class IngestResultViewModel
+{
+    public bool    Success           { get; set; }
+    public string? Error             { get; set; }
+    public int     RunId             { get; set; }
+    public int     MessagesLoaded    { get; set; }
+    public int     NewSenders        { get; set; }
+    public int     UpdatedSenders    { get; set; }
+    public int     SkippedDuplicates { get; set; }
+    public string? SourceFile        { get; set; }
+    public string  StartedAt         { get; set; } = string.Empty;
+    public string  CompletedAt       { get; set; } = string.Empty;
+}
+
+// ════════════════════════════════════════════════════════════════
 //  RATING ViewModels
 // ════════════════════════════════════════════════════════════════
 
@@ -200,9 +315,15 @@ public class RatingOptionViewModel
 
 public class DashboardViewModel
 {
-    public int TotalRuns     { get; set; }
-    public int TotalMessages { get; set; }
-    public int TotalSenders  { get; set; }
+    public int  TotalRuns     { get; set; }
+    public int  TotalMessages { get; set; }
+    public int  TotalSenders  { get; set; }
+    public int  Page          { get; set; } = 1;
+    public int  PageSize      { get; set; } = 20;
+    public bool SortAsc       { get; set; }
+    public int  TotalPages    => (int)Math.Ceiling((double)TotalSenders / PageSize);
+    public bool HasPrev       => Page > 1;
+    public bool HasNext       => Page < TotalPages;
 
     public RunSummaryViewModel?                MostRecentRun   { get; set; }
     public IEnumerable<SenderSummaryViewModel> TopSenders      { get; set; } = [];

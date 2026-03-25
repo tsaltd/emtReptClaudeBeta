@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"C:/Users/wp710/OneDrive/Projects/ClaudeApps/EmailTrackerMVVM_alpha/EmailTracker/EmailTracker\" && dotnet run 2>&1)"
+    ]
+  }
+}

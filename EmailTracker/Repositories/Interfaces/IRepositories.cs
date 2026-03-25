@@ -45,7 +45,8 @@ public interface ISenderRepository
         string? searchTerm,
         string? ratingFilter,
         int     page,
-        int     pageSize);
+        int     pageSize,
+        bool    sortAsc = false);
 
     Task<int>            CountAsync(string? searchTerm, string? ratingFilter);
     Task<Sender?>        GetByIdAsync(int id);
@@ -53,6 +54,7 @@ public interface ISenderRepository
     Task<Sender>         CreateAsync(Sender sender);
     Task<Sender>         UpdateAsync(Sender sender);
     Task<IEnumerable<VSenderWithRating>> GetTopBySendCountAsync(int? runId, int take = 10);
+    Task                 UpdateRatingBulkAsync(IEnumerable<int> senderIds, int ratingId);
 }
 
 public interface IRatingRepository

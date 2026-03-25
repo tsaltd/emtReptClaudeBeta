@@ -1,19 +1,39 @@
-@model SenderDetailViewModel
-@{ ViewData["Title"] = Model.EmailAddress; }
+@model SenderSummaryPageViewModel
+@{ ViewData["Title"] = "Sender Summary"; }
 
 @Html.AntiForgeryToken()
 
-@* ── Nav ─────────────────────────────────────────────────────── *@
-<div class="d-flex align-items-center gap-2 mb-3">
+@* ── Nav + Prev/Next ─────────────────────────────────────────── *@
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
     <a asp-controller="Sender" asp-action="Index" class="btn btn-sm btn-outline-secondary">
         <i class="fas fa-arrow-left me-1"></i> Senders
     </a>
-    <a asp-controller="Sender" asp-action="Summary" asp-route-id="@Model.SenderId"
-       class="btn btn-sm btn-outline-info ms-1">Summary</a>
+    <a asp-controller="Sender" asp-action="Detail" asp-route-id="@Model.SenderId"
+       class="btn btn-sm btn-outline-secondary ms-1">Detail</a>
     <a asp-controller="Message" asp-action="Index" asp-route-senderId="@Model.SenderId"
        class="btn btn-sm btn-outline-primary ms-auto">
         <i class="fas fa-envelope me-1"></i> All Messages
     </a>
+
+    <span class="vr"></span>
+    <a href="?id=@Model.SenderId&page=1&pageSize=@Model.PageSize&sortAsc=@((!Model.SortAsc).ToString().ToLower())"
+       class="btn btn-sm btn-outline-secondary">
+        <i class="fas fa-sort-amount-@(Model.SortAsc ? "up" : "down") me-1"></i>@(Model.SortAsc ? "Asc" : "Desc")
+    </a>
+
+    @if (Model.TotalPages > 1)
+    {
+        <span class="vr"></span>
+        <a href="?id=@Model.SenderId&page=@Model.PrevPage&pageSize=@Model.PageSize&sortAsc=@(Model.SortAsc.ToString().ToLower())"
+           class="btn btn-sm btn-outline-secondary @(!Model.HasPrev ? "disabled" : "")">
+            <i class="fas fa-chevron-left"></i> Prev
+        </a>
+        <span class="text-muted small">@Model.Page / @Model.TotalPages</span>
+        <a href="?id=@Model.SenderId&page=@Model.NextPage&pageSize=@Model.PageSize&sortAsc=@(Model.SortAsc.ToString().ToLower())"
+           class="btn btn-sm btn-outline-secondary @(!Model.HasNext ? "disabled" : "")">
+            Next <i class="fas fa-chevron-right"></i>
+        </a>
+    }
 </div>
 
 @* ── Condensed sender header ─────────────────────────────────── *@
@@ -52,7 +72,7 @@
     </div>
 </div>
 
-@* ── Messages grouped by from_raw ─────────────────────────────── *@
+@* ── From_raw groups ─────────────────────────────────────────── *@
 @if (!Model.FromRawGroups.Any())
 {
     <p class="text-muted text-center py-4">No messages found for this sender.</p>
@@ -100,6 +120,27 @@ else
             </div>
         </div>
     }
+}
+
+@* ── Pagination footer ───────────────────────────────────────── *@
+@if (Model.TotalPages > 1)
+{
+    <div class="card border-0 shadow-sm mt-3">
+        <div class="card-body py-2 px-3 d-flex align-items-center justify-content-between">
+            <a href="?id=@Model.SenderId&page=@Model.PrevPage&pageSize=@Model.PageSize&sortAsc=@(Model.SortAsc.ToString().ToLower())"
+               class="btn btn-sm btn-outline-secondary @(!Model.HasPrev ? "disabled" : "")">
+                <i class="fas fa-chevron-left me-1"></i> Prev
+            </a>
+            <span class="text-muted small">
+                Page @Model.Page of @Model.TotalPages
+                <span class="ms-2">(@Model.TotalGroups from-names total)</span>
+            </span>
+            <a href="?id=@Model.SenderId&page=@Model.NextPage&pageSize=@Model.PageSize&sortAsc=@(Model.SortAsc.ToString().ToLower())"
+               class="btn btn-sm btn-outline-secondary @(!Model.HasNext ? "disabled" : "")">
+                Next <i class="fas fa-chevron-right ms-1"></i>
+            </a>
+        </div>
+    </div>
 }
 
 @* ── Toast ────────────────────────────────────────────────────── *@

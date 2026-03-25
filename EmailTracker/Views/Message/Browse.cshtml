@@ -1,0 +1,503 @@
+@model MessageBrowseViewModel
+@{ ViewData["Title"] = "Browse Messages"; }
+@Html.AntiForgeryToken()
+
+@section Styles {
+<style>
+    /* ── Two-column browse layout ─────────────────────────────── */
+    .browse-wrap {
+        display: flex;
+        border: 1px solid #ced4da;
+        background: #fff;
+        min-height: 72vh;
+    }
+
+    /* ── Sender panel (left) ──────────────────────────────────── */
+    .sp-panel {
+        width: 270px;
+        flex-shrink: 0;
+        border-right: 1px solid #dee2e6;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+    }
+    .sp-header {
+        padding: .55rem .65rem;
+        border-bottom: 1px solid #dee2e6;
+        background: #f8f9fa;
+        display: flex;
+        gap: .35rem;
+        align-items: center;
+    }
+    .sp-header .form-control {
+        font-size: .78rem;
+        height: 28px;
+        padding: .15rem .45rem;
+        border-radius: 0;
+    }
+    .sp-sort-btn {
+        flex-shrink: 0;
+        font-size: .7rem;
+        height: 28px;
+        padding: 0 .55rem;
+        border-radius: 0;
+        white-space: nowrap;
+    }
+    #sp-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    .sp-status {
+        padding: .28rem .75rem;
+        font-size: .67rem;
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        background: #1e2533;
+        color: #adb5bd;
+    }
+    .sp-status strong { color: #e9ecef; }
+    .sp-list {
+        flex: 1;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        overflow-y: auto;
+    }
+    .sp-item a {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: .32rem .75rem;
+        text-decoration: none;
+        color: #495057;
+        font-size: .775rem;
+        border-bottom: 1px solid #f1f3f5;
+        transition: background .1s;
+    }
+    .sp-item a:hover { background: #f0f4ff; color: #0d6efd; }
+    .sp-item.active a {
+        background: #e7efff;
+        color: #0d6efd;
+        font-weight: 600;
+        border-left: 3px solid #0d6efd;
+    }
+    .sp-email {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+        margin-right: .4rem;
+    }
+    .sp-count {
+        font-size: .7rem;
+        color: #868e96;
+        flex-shrink: 0;
+        font-weight: 600;
+    }
+    .sp-item.active .sp-count { color: #0d6efd; }
+
+    /* Panel page nav */
+    .sp-pager {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: .3rem .65rem;
+        border-top: 1px solid #dee2e6;
+        border-bottom: 1px solid #dee2e6;
+        font-size: .7rem;
+        color: #868e96;
+        background: #f8f9fa;
+    }
+    .sp-pager-btn {
+        background: none;
+        border: none;
+        color: #0d6efd;
+        font-size: .7rem;
+        cursor: pointer;
+        padding: 0 .2rem;
+    }
+    .sp-pager-btn:disabled { color: #ced4da; cursor: default; }
+
+    /* ±1/±10 sender nav */
+    .sp-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: .38rem .5rem;
+        background: #f1f3f5;
+        border-top: 1px solid #dee2e6;
+        gap: .2rem;
+    }
+    .sp-nav-btn {
+        flex: 1;
+        font-size: .68rem;
+        padding: .18rem 0;
+        border-radius: 0;
+        white-space: nowrap;
+        text-align: center;
+        text-decoration: none;
+        border: 1px solid #ced4da;
+        background: #fff;
+        color: #495057;
+        display: inline-block;
+        line-height: 1.5;
+    }
+    .sp-nav-btn:hover { background: #e7efff; color: #0d6efd; border-color: #0d6efd; }
+    .sp-nav-btn.disabled {
+        background: #f8f9fa; color: #ced4da;
+        border-color: #e9ecef; pointer-events: none;
+    }
+    .sp-pos {
+        font-size: .68rem;
+        color: #868e96;
+        white-space: nowrap;
+        padding: 0 .2rem;
+        text-align: center;
+        min-width: 28px;
+    }
+
+    /* ── Message area (right) ─────────────────────────────────── */
+    .browse-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    .browse-sender-strip {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #1e2533;
+        color: #adb5bd;
+        font-size: .72rem;
+        font-weight: 500;
+        letter-spacing: .4px;
+        padding: .35rem 1rem;
+        text-transform: uppercase;
+    }
+    .browse-sender-strip strong { color: #e9ecef; font-size: .85rem; text-transform: none; }
+    .rating-pill {
+        display: inline-block;
+        padding: .15rem .65rem;
+        border-radius: 999px;
+        font-size: .65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        color: #000;
+    }
+    /* Message table */
+    .browse-msg-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        font-size: .825rem;
+    }
+    .browse-msg-table .col-date    { width: 135px; }
+    .browse-msg-table .col-subject { width: auto; }
+    .browse-msg-table .col-run     { width: 50px; }
+    .browse-msg-table thead th {
+        background: #f1f3f5;
+        padding: .4rem .75rem;
+        font-size: .67rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .6px;
+        color: #868e96;
+        border-bottom: 2px solid #dee2e6;
+        white-space: nowrap;
+    }
+    .browse-msg-table tbody tr:hover td { background: #f0f4ff; }
+    .browse-msg-row td {
+        padding: .38rem .75rem;
+        border-bottom: 1px solid #f1f3f5;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        vertical-align: middle;
+    }
+    .browse-msg-date    { color: #6c757d; font-size: .775rem; }
+    .browse-msg-subject { font-weight: 600; color: #212529; }
+    .browse-msg-snippet { font-size: .73rem; color: #868e96; margin-top: .1rem; }
+    .browse-run-link    { font-size: .7rem; color: #868e96; text-decoration: none; }
+    .browse-run-link:hover { color: #0d6efd; }
+    /* ── Hotkey rating strip ──────────────────────────────────── */
+    .hotkey-strip {
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+        padding: .4rem .75rem;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        flex-wrap: wrap;
+    }
+    .hotkey-strip .hs-label {
+        font-size: .65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        color: #adb5bd;
+        margin-right: .25rem;
+    }
+    .hk-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .2rem .65rem;
+        border: 2px solid rgba(0,0,0,.18);
+        border-radius: 999px;
+        font-size: .73rem;
+        cursor: pointer;
+        transition: all .12s;
+        color: #000;
+        font-weight: 500;
+        user-select: none;
+        opacity: .72;
+    }
+    .hk-btn kbd {
+        display: inline-block;
+        padding: .05rem .3rem;
+        font-size: .65rem;
+        background: rgba(0,0,0,.15);
+        border: 1px solid rgba(0,0,0,.2);
+        border-radius: 3px;
+        color: #000;
+        font-family: monospace;
+        line-height: 1.4;
+    }
+    .hk-btn:hover   { opacity: .9; border-color: rgba(0,0,0,.4); }
+    .hk-btn.active  { opacity: 1; border-color: rgba(0,0,0,.7); border-width: 3px; font-weight: 700; }
+    .hk-btn.active::before { content: '✓ '; }
+    .hk-btn.pressed { transform: scale(.91); }
+
+    /* Message pagination */
+    .browse-msg-pager {
+        display: flex;
+        justify-content: center;
+        padding: .6rem;
+        border-top: 1px solid #dee2e6;
+        background: #f8f9fa;
+        margin-top: auto;
+    }
+    .browse-msg-pager .page-link { border-radius: 0 !important; font-size: .775rem; }
+</style>
+}
+
+<div class="browse-wrap">
+
+    <!-- ══ Sender Panel ══════════════════════════════════════════════ -->
+    <div class="sp-panel">
+
+        <!-- Search + sort (not replaced by AJAX) -->
+        <div class="sp-header">
+            <input id="sp-search" type="text" class="form-control"
+                   placeholder="Search senders…" value="@Model.SenderSearch" />
+            <button id="sp-sort" class="btn btn-outline-secondary sp-sort-btn"
+                    data-asc="@Model.SenderSortAsc.ToString().ToLower()">
+                @if (Model.SenderSortAsc) { <text>↑ Asc</text> } else { <text>↓ Desc</text> }
+            </button>
+        </div>
+
+        <!-- AJAX-refreshed content: list + pager + nav -->
+        <div id="sp-content">
+            @await Html.PartialAsync("_BrowseSenderPanel", Model)
+        </div>
+
+    </div>
+
+    <!-- ══ Message Area ══════════════════════════════════════════════ -->
+    <div class="browse-main">
+
+        <!-- Sender identity strip -->
+        <div class="browse-sender-strip">
+            <span>
+                <strong>@Model.EmailAddress</strong>
+                &nbsp;·&nbsp; @Model.MsgTotal msg@(Model.MsgTotal != 1 ? "s" : "")
+                @if (Model.SenderRank > 0)
+                {
+                    <text>&nbsp;·&nbsp; #@Model.SenderRank of @Model.SenderTotal</text>
+                }
+            </span>
+            @if (!string.IsNullOrEmpty(Model.RatingName))
+            {
+                <span class="rating-pill" style="background:@Model.RatingName">@Model.RatingName</span>
+            }
+        </div>
+
+        <!-- Hotkey rating strip -->
+        <div class="hotkey-strip">
+            <span class="hs-label">Rate</span>
+            @{ int hkIdx = 1; }
+            @foreach (var r in Model.AvailableRatings)
+            {
+                var isActive = r.RatingName == Model.RatingName;
+                <button class="hk-btn @(isActive ? "active" : "")"
+                        style="background:@r.RatingName"
+                        data-rating-id="@r.RatingId"
+                        data-rating-name="@r.RatingName"
+                        data-hk-index="@hkIdx">
+                    <kbd>@hkIdx</kbd> @r.RatingName
+                </button>
+                hkIdx++;
+            }
+        </div>
+
+        <!-- Message table -->
+        <table class="browse-msg-table">
+            <thead>
+                <tr>
+                    <th class="col-date">Date</th>
+                    <th class="col-subject">Subject / Snippet</th>
+                    <th class="col-run text-end">Run</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Messages.Any())
+                {
+                    <tr>
+                        <td colspan="3" style="text-align:center;padding:3rem;color:#868e96;font-size:.875rem">
+                            No messages found.
+                        </td>
+                    </tr>
+                }
+                @foreach (var m in Model.Messages)
+                {
+                    <tr class="browse-msg-row">
+                        <td class="browse-msg-date">@m.DisplayDate</td>
+                        <td>
+                            <div class="browse-msg-subject">@(m.Subject ?? "—")</div>
+                            @if (!string.IsNullOrWhiteSpace(m.Snippet))
+                            {
+                                <div class="browse-msg-snippet">@m.Snippet</div>
+                            }
+                        </td>
+                        <td class="text-end pe-2">
+                            <a href="/Run/Detail/@m.RunId" class="browse-run-link">#@m.RunId</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <!-- Message pagination -->
+        @if (Model.MsgTotalPages > 1)
+        {
+            <div class="browse-msg-pager">
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        @for (int p = 1; p <= Model.MsgTotalPages; p++)
+                        {
+                            <li class="page-item @(p == Model.MsgPage ? "active" : "")">
+                                <a class="page-link"
+                                   href="@Url.Action("Browse", "Message", new { senderId = Model.SenderId, senderSearch = Model.SenderSearch, senderSortAsc = Model.SenderSortAsc, msgPage = p })">@p</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        }
+
+    </div><!-- /browse-main -->
+
+</div><!-- /browse-wrap -->
+
+@section Scripts {
+<script>
+    const senderId = @Model.SenderId;
+    let spTimer;
+
+    function getSenderPanelUrl(page) {
+        return '/Message/BrowsePanel?' + $.param({
+            senderId:      senderId,
+            senderSearch:  $('#sp-search').val(),
+            senderSortAsc: $('#sp-sort').data('asc') === 'true',
+            senderPage:    page || 1
+        });
+    }
+
+    function refreshPanel(page) {
+        $.get(getSenderPanelUrl(page), function(html) {
+            $('#sp-content').html(html);
+        });
+    }
+
+    // Debounced search
+    $('#sp-search').on('input', function() {
+        clearTimeout(spTimer);
+        spTimer = setTimeout(() => refreshPanel(1), 300);
+    });
+
+    // Sort toggle
+    $('#sp-sort').on('click', function() {
+        const nowAsc = $(this).data('asc') !== 'true';
+        $(this).data('asc', nowAsc.toString());
+        $(this).text(nowAsc ? '↑ Asc' : '↓ Desc');
+        refreshPanel(1);
+    });
+
+    // Sender panel page nav (delegated — content replaced by AJAX)
+    $(document).on('click', '.sp-pager-btn[data-page]:not([disabled])', function() {
+        refreshPanel(parseInt($(this).data('page')));
+    });
+
+    // ── Hotkey rating ────────────────────────────────────────────
+    const antiforgery = $('input[name="__RequestVerificationToken"]').val();
+
+    function applyRating(ratingId, ratingName) {
+        $.ajax({
+            url:         '/Sender/UpdateRating',
+            method:      'POST',
+            contentType: 'application/json',
+            headers:     { 'RequestVerificationToken': antiforgery },
+            data:        JSON.stringify({ senderId: senderId, ratingId: ratingId }),
+            success: function(res) {
+                if (res.success) {
+                    // Update active button — background stays from inline style, only class changes
+                    $('.hk-btn').each(function() {
+                        $(this).toggleClass('active', $(this).data('rating-name') === res.ratingName);
+                    });
+                    // Update sender strip pill — use the matched button's background color
+                    const $active = $(`.hk-btn[data-rating-name="${res.ratingName}"]`);
+                    $('.rating-pill').text(res.ratingName)
+                                    .css('background', $active.css('background-color'));
+                }
+            }
+        });
+    }
+
+    // Arrow keys: navigate ±1 sender
+    $(document).on('keydown', function(e) {
+        if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const $prev = $('.sp-nav-btn:not(.disabled)').filter(function() { return $(this).text().trim() === '←1'; });
+            if ($prev.length && !$prev.hasClass('disabled')) { window.location.href = $prev.attr('href'); }
+            return;
+        }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const $next = $('.sp-nav-btn:not(.disabled)').filter(function() { return $(this).text().trim() === '1→'; });
+            if ($next.length && !$next.hasClass('disabled')) { window.location.href = $next.attr('href'); }
+            return;
+        }
+    });
+
+    // Keyboard: 1–9 trigger rating by position
+    $(document).on('keydown', function(e) {
+        if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+        const num = parseInt(e.key);
+        if (isNaN(num) || num < 1) return;
+        const $btn = $(`.hk-btn[data-hk-index="${num}"]`);
+        if (!$btn.length) return;
+        $btn.addClass('pressed');
+        setTimeout(() => $btn.removeClass('pressed'), 150);
+        applyRating($btn.data('rating-id'), $btn.data('rating-name'));
+    });
+
+    // Click on a hotkey button
+    $(document).on('click', '.hk-btn', function() {
+        applyRating($(this).data('rating-id'), $(this).data('rating-name'));
+    });
+</script>
+}

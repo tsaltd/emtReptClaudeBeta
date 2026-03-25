@@ -1,6 +1,8 @@
 @model DashboardViewModel
 @{ ViewData["Title"] = "Dashboard"; }
 
+@Html.AntiForgeryToken()
+
 <div class="row g-3 mb-4">
     <div class="col-md-4">
         <div class="card stat-card bg-primary text-white">
@@ -45,8 +47,15 @@
 }
 
 <div class="table-card">
-    <div class="p-3 border-bottom d-flex align-items-center justify-content-between">
-        <h6 class="mb-0 fw-bold"><i class="fas fa-users me-2 text-muted"></i>Top Senders (All Time)</h6>
+    <div class="p-3 border-bottom d-flex align-items-center gap-2 flex-wrap">
+        <h6 class="mb-0 fw-bold me-auto">
+            <i class="fas fa-users me-2 text-muted"></i>Senders
+            <span class="text-muted fw-normal small ms-2">(@Model.TotalSenders.ToString("N0") total)</span>
+        </h6>
+        <a href="?page=1&pageSize=@Model.PageSize&sortAsc=@((!Model.SortAsc).ToString().ToLower())"
+           class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-sort-amount-@(Model.SortAsc ? "up" : "down") me-1"></i>@(Model.SortAsc ? "Asc" : "Desc")
+        </a>
         <a asp-controller="Sender" asp-action="Index" class="btn btn-sm btn-outline-secondary">View All</a>
     </div>
     <table class="table table-hover">
@@ -66,10 +75,88 @@
                     <td><code class="text-primary">@s.EmailAddress</code></td>
                     <td class="text-muted small">@(s.DisplayName ?? "—")</td>
                     <td class="text-center"><span class="badge bg-primary rounded-pill">@s.MsgCount</span></td>
-                    <td><span class="badge badge-rating bg-secondary">@s.RatingName</span></td>
+                    <td onclick="event.stopPropagation()">
+                        <select class="form-select form-select-sm w-auto rating-select"
+                                data-sender-id="@s.SenderId">
+                            @foreach (var r in Model.RatingBreakdown)
+                            {
+                                if (r.RatingId == s.RatingId)
+                                {
+                                    <option value="@r.RatingId" selected>@r.RatingName</option>
+                                }
+                                else
+                                {
+                                    <option value="@r.RatingId">@r.RatingName</option>
+                                }
+                            }
+                        </select>
+                    </td>
                     <td class="text-muted small">@s.DisplayLastSeen</td>
                 </tr>
             }
         </tbody>
     </table>
+
+    @* ── Pagination footer ── *@
+    @if (Model.TotalPages > 1)
+    {
+        <div class="p-3 border-top d-flex align-items-center justify-content-between">
+            <a href="?page=@(Model.Page - 1)&pageSize=@Model.PageSize&sortAsc=@(Model.SortAsc.ToString().ToLower())"
+               class="btn btn-sm btn-outline-secondary @(!Model.HasPrev ? "disabled" : "")">
+                <i class="fas fa-chevron-left me-1"></i> Prev
+            </a>
+            <span class="text-muted small">Page @Model.Page of @Model.TotalPages</span>
+            <a href="?page=@(Model.Page + 1)&pageSize=@Model.PageSize&sortAsc=@(Model.SortAsc.ToString().ToLower())"
+               class="btn btn-sm btn-outline-secondary @(!Model.HasNext ? "disabled" : "")">
+                Next <i class="fas fa-chevron-right ms-1"></i>
+            </a>
+        </div>
+    }
 </div>
+
+<!-- Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:9999">
+    <div id="rating-toast" class="toast align-items-center border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body" id="toast-msg">Rating saved.</div>
+            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    var toast = new bootstrap.Toast(document.getElementById('rating-toast'), { delay: 2000 });
+    var token = $('input[name="__RequestVerificationToken"]').val();
+
+    $(document).on('change', '.rating-select', function () {
+        var senderId = $(this).data('sender-id');
+        var ratingId = parseInt($(this).val());
+
+        $.ajax({
+            url:         '/Sender/UpdateRating',
+            method:      'POST',
+            contentType: 'application/json',
+            headers:     { 'RequestVerificationToken': token },
+            data:        JSON.stringify({ senderId: senderId, ratingId: ratingId }),
+            success: function (res) {
+                if (res.success) {
+                    $('#toast-msg').text('Rating saved: ' + res.ratingName);
+                    $('#rating-toast').removeClass('bg-danger').addClass('bg-success text-white');
+                } else {
+                    $('#toast-msg').text('Error: ' + res.message);
+                    $('#rating-toast').removeClass('bg-success').addClass('bg-danger text-white');
+                }
+                toast.show();
+            },
+            error: function () {
+                $('#toast-msg').text('Network error — rating not saved.');
+                $('#rating-toast').addClass('bg-danger text-white');
+                toast.show();
+            }
+        });
+    });
+})();
+</script>
+}

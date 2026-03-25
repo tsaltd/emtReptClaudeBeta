@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmailTracker", "EmailTracker.csproj", "{AE3F9C67-4282-283B-1C01-A452863E1DED}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AE3F9C67-4282-283B-1C01-A452863E1DED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE3F9C67-4282-283B-1C01-A452863E1DED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE3F9C67-4282-283B-1C01-A452863E1DED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE3F9C67-4282-283B-1C01-A452863E1DED}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {06D91EE3-65E6-4B0B-A974-19A318385395}
+	EndGlobalSection
+EndGlobal
