@@ -5,21 +5,19 @@
         <tr>
             <th class="col-date">Date</th>
             <th class="col-subject">Subject</th>
-            <th class="col-run text-end">Run</th>
         </tr>
     </thead>
     <tbody>
         @if (!Model.Messages.Any())
         {
-            <tr class="msg-empty"><td colspan="3">No messages match your filters.</td></tr>
+            <tr class="msg-empty"><td colspan="2">No messages match your filters.</td></tr>
         }
         @foreach (var senderGroup in Model.Messages.GroupBy(m => new { m.SenderId, m.EmailAddress, m.RatingName }))
         {
-            var seenRuns    = new HashSet<int>();
             var ratingColor = senderGroup.Key.RatingName.ToLower();
 
             <tr class="msg-cea">
-                <td colspan="3">
+                <td colspan="2">
                     <span class="msg-cea-pill" style="background-color:@ratingColor">
                         <a href="/Sender/Detail/@senderGroup.Key.SenderId" class="msg-cea-link">@senderGroup.Key.EmailAddress</a>
                         <span class="msg-cea-count">@senderGroup.Count() msg</span>
@@ -35,29 +33,20 @@
                 if (string.IsNullOrWhiteSpace(rawDisplay)) rawDisplay = "—";
 
                 <tr class="msg-raw">
-                    <td colspan="3">@rawDisplay</td>
+                    <td colspan="2">@rawDisplay</td>
                 </tr>
 
                 @foreach (var subjectGroup in rawGroup.GroupBy(m => m.Subject))
                 {
-                    var firstRunId = subjectGroup.First().RunId;
-                    var showRun    = seenRuns.Add(firstRunId);
-
                     <tr class="msg-subject">
                         <td colspan="2">&#8226;&nbsp;@(subjectGroup.Key ?? "—")</td>
-                        <td class="text-end pe-2">
-                            @if (showRun)
-                            {
-                                <a href="/Run/Detail/@firstRunId" class="run-link">#@firstRunId</a>
-                            }
-                        </td>
                     </tr>
 
                     @foreach (var m in subjectGroup.Where(m => !string.IsNullOrWhiteSpace(m.Snippet) || !string.IsNullOrWhiteSpace(m.InternalDate)))
                     {
                         <tr class="msg-leaf">
                             <td>@m.DisplayDate</td>
-                            <td class="cell-snippet" colspan="2">@m.Snippet</td>
+                            <td class="cell-snippet">@m.Snippet</td>
                         </tr>
                     }
                 }

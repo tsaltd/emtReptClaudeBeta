@@ -47,18 +47,18 @@
 
                     <div class="mb-4">
                         <label class="form-label fw-semibold" style="font-size:.875rem">
-                            Harvest window: <span id="days-label" class="text-primary">7 days</span>
+                            Harvest window: <span id="days-label" class="text-primary">14 days</span>
                         </label>
                         <input id="days-slider" name="days" type="range"
-                               class="form-range" min="1" max="7" step="1" value="7" />
+                               class="form-range" min="1" max="14" step="1" value="14" />
                         <div class="d-flex justify-content-between text-muted" style="font-size:.75rem;margin-top:2px">
                             <span>1 day</span>
-                            <span>7 days</span>
+                            <span>14 days</span>
                         </div>
                     </div>
 
                     <table class="table table-sm mb-4" style="font-size:.8rem">
-                        <tr><td class="text-muted">Query</td><td><code id="query-label">newer_than:7d</code></td></tr>
+                        <tr><td class="text-muted">Query</td><td><code id="query-label">newer_than:14d</code></td></tr>
                         <tr><td class="text-muted">Max messages</td><td><code>4000</code></td></tr>
                         <tr><td class="text-muted">Database</td><td><code>gmailanalysis.db</code></td></tr>
                     </table>
@@ -119,9 +119,9 @@ $('#ingestModal').on('hidden.bs.modal', function () {
 
 function resetModal() {
     _backgroundMode = false;
-    $('#days-slider').val(7);
-    $('#days-label').text('7 days');
-    $('#query-label').text('newer_than:7d');
+    $('#days-slider').val(14);
+    $('#days-label').text('14 days');
+    $('#query-label').text('newer_than:14d');
     $('#progress-panel').hide();
     $('#result-panel').hide();
     $('#result-content').html('');
@@ -174,7 +174,7 @@ function finishPoll(r) {
 
     if (_backgroundMode) {
         if (r.status === 'complete' && r.result) {
-            showToast('Ingest complete \u2714  ' + r.result.MessagesLoaded + ' messages loaded', true);
+            showToast('Ingest complete \u2714  ' + r.result.messagesLoaded + ' messages loaded', true);
         } else {
             showToast('Ingest failed \u2014 open Gmail Ingest for details', false);
             // Re-open modal to show the error
@@ -198,13 +198,13 @@ function buildResultHtml(r) {
             '<div class="alert alert-success mb-0">' +
             '  <strong>Ingest complete.</strong>' +
             '  <table class="table table-sm mt-3 mb-2" style="font-size:.875rem">' +
-            '    <tr><td>Run ID</td><td><strong>#' + res.RunId + '</strong></td></tr>' +
-            '    <tr><td>Messages loaded</td><td><strong>' + res.MessagesLoaded + '</strong></td></tr>' +
-            '    <tr><td>New senders</td><td><strong>' + res.NewSenders + '</strong></td></tr>' +
-            '    <tr><td>Updated senders</td><td><strong>' + res.UpdatedSenders + '</strong></td></tr>' +
-            '    <tr><td>Duplicates skipped</td><td><strong>' + res.SkippedDuplicates + '</strong></td></tr>' +
-            '    <tr><td>Completed at</td><td class="text-muted">' + res.CompletedAt + '</td></tr>' +
-            '    <tr><td>Source file</td><td class="text-muted" style="font-size:.75rem;word-break:break-all">' + res.SourceFile + '</td></tr>' +
+            '    <tr><td>Run ID</td><td><strong>#' + res.runId + '</strong></td></tr>' +
+            '    <tr><td>Messages loaded</td><td><strong>' + res.messagesLoaded + '</strong></td></tr>' +
+            '    <tr><td>New senders</td><td><strong>' + res.newSenders + '</strong></td></tr>' +
+            '    <tr><td>Updated senders</td><td><strong>' + res.updatedSenders + '</strong></td></tr>' +
+            '    <tr><td>Duplicates skipped</td><td><strong>' + res.skippedDuplicates + '</strong></td></tr>' +
+            '    <tr><td>Completed at</td><td class="text-muted">' + res.completedAt + '</td></tr>' +
+            '    <tr><td>Source file</td><td class="text-muted" style="font-size:.75rem;word-break:break-all">' + res.sourceFile + '</td></tr>' +
             '  </table>' +
             '  <a href="/Run" class="btn btn-sm btn-outline-success">View Runs</a>' +
             '  <a href="/Sender" class="btn btn-sm btn-outline-secondary ms-2">View Senders</a>' +

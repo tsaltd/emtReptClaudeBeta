@@ -16,7 +16,6 @@ public interface IRunRepository
 public interface IMessageRepository
 {
     Task<IEnumerable<VMessageWithSender>> SearchAsync(
-        int?    runId,
         int?    senderId,
         string? searchTerm,
         string? dateFrom,
@@ -26,7 +25,6 @@ public interface IMessageRepository
         int     pageSize);
 
     Task<int> CountAsync(
-        int?    runId,
         int?    senderId,
         string? searchTerm,
         string? dateFrom,
@@ -37,6 +35,7 @@ public interface IMessageRepository
     Task<Message>  CreateAsync(Message message);
     Task           DeleteAsync(int id);
     Task<IEnumerable<(string FromRaw, int Count)>> GetFromRawBreakdownAsync(int senderId);
+    Task<IEnumerable<VMessageWithSender>> GetByGmailIdsAsync(IEnumerable<string> gmailIds);
 }
 
 public interface ISenderRepository
@@ -53,12 +52,20 @@ public interface ISenderRepository
     Task<Sender?>        GetByEmailAsync(string email);
     Task<Sender>         CreateAsync(Sender sender);
     Task<Sender>         UpdateAsync(Sender sender);
-    Task<IEnumerable<VSenderWithRating>> GetTopBySendCountAsync(int? runId, int take = 10);
     Task                 UpdateRatingBulkAsync(IEnumerable<int> senderIds, int ratingId);
+    Task<IEnumerable<VSenderWithRating>> GetTopSendersForRunAsync(int runId, int limit = 10);
 }
 
 public interface IRatingRepository
 {
     Task<IEnumerable<Rating>> GetAllAsync();
     Task<Rating?>             GetByIdAsync(int id);
+}
+
+public interface IPriorityMessageRepository
+{
+    Task              AddAsync(string gmailMessageId);
+    Task              RemoveAsync(string gmailMessageId);
+    Task<bool>        IsTrackedAsync(string gmailMessageId);
+    Task<HashSet<string>> GetAllIdsAsync();
 }

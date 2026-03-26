@@ -24,6 +24,9 @@ public interface IMessageService
 
     /// <summary>Lightweight fetch: messages for one sender, no dropdown data loaded.</summary>
     Task<IEnumerable<MessageRowViewModel>> GetForSenderAsync(int senderId, int limit = 200);
+
+    /// <summary>Fetch messages by a set of gmail message IDs (for priority filter).</summary>
+    Task<IEnumerable<MessageRowViewModel>> GetByGmailIdsAsync(IEnumerable<string> gmailIds);
 }
 
 public interface ISenderService
@@ -59,11 +62,13 @@ public class RunService : IRunService
 {
     private readonly IRunRepository     _runRepo;
     private readonly IMessageRepository _msgRepo;
+    private readonly ISenderRepository  _senderRepo;
 
-    public RunService(IRunRepository runRepo, IMessageRepository msgRepo)
+    public RunService(IRunRepository runRepo, IMessageRepository msgRepo, ISenderRepository senderRepo)
     {
-        _runRepo = runRepo;
-        _msgRepo = msgRepo;
+        _runRepo    = runRepo;
+        _msgRepo    = msgRepo;
+        _senderRepo = senderRepo;
     }
 
     public async Task<RunListViewModel> GetRunListAsync(string? searchTerm)
@@ -102,6 +107,8 @@ public class RunService : IRunService
         var run = await _runRepo.GetByIdAsync(runId);
         if (run == null) return null;
 
+        var topSenders = await _senderRepo.GetTopSendersForRunAsync(runId);
+
         return new RunDetailViewModel
         {
             RunId        = run.RunId,
@@ -110,7 +117,16 @@ public class RunService : IRunService
             StartedAt    = run.StartedAt,
             SourceLabel  = run.SourceLabel,
             MessageCount = await _runRepo.GetMessageCountAsync(runId),
-            SenderCount  = await _runRepo.GetSenderCountAsync(runId)
+            SenderCount  = await _runRepo.GetSenderCountAsync(runId),
+            TopSenders   = topSenders.Select(s => new SenderSummaryViewModel
+            {
+                SenderId     = s.SenderId,
+                EmailAddress = s.EmailAddress,
+                DisplayName  = s.DisplayName,
+                MsgCount     = s.MsgCount,
+                RatingName   = s.RatingName,
+                RatingId     = s.RatingId
+            })
         };
     }
 }
@@ -118,28 +134,25 @@ public class RunService : IRunService
 public class MessageService : IMessageService
 {
     private readonly IMessageRepository _msgRepo;
-    private readonly IRunRepository     _runRepo;
     private readonly IRatingRepository  _ratingRepo;
 
-    public MessageService(IMessageRepository msgRepo, IRunRepository runRepo, IRatingRepository ratingRepo)
+    public MessageService(IMessageRepository msgRepo, IRatingRepository ratingRepo)
     {
         _msgRepo    = msgRepo;
-        _runRepo    = runRepo;
         _ratingRepo = ratingRepo;
     }
 
     public async Task<MessageSearchViewModel> SearchAsync(MessageSearchViewModel filters)
     {
         var messages = await _msgRepo.SearchAsync(
-            filters.RunId, filters.SenderId, filters.SearchTerm,
+            filters.SenderId, filters.SearchTerm,
             filters.DateFrom, filters.DateTo, filters.RatingFilter,
             filters.Page, filters.PageSize);
 
         var total = await _msgRepo.CountAsync(
-            filters.RunId, filters.SenderId, filters.SearchTerm,
+            filters.SenderId, filters.SearchTerm,
             filters.DateFrom, filters.DateTo, filters.RatingFilter);
 
-        var runs    = await _runRepo.GetAllAsync();
         var ratings = await _ratingRepo.GetAllAsync();
 
         filters.Messages = messages.Select(m => new MessageRowViewModel
@@ -158,13 +171,6 @@ public class MessageService : IMessageService
         });
 
         filters.TotalCount = total;
-        filters.AvailableRuns = runs.Select(r => new RunSummaryViewModel
-        {
-            RunId       = r.RunId,
-            WindowStart = r.WindowStart,
-            WindowEnd   = r.WindowEnd,
-            SourceLabel = r.SourceLabel
-        });
         filters.AvailableRatings = ratings.Select(r => new RatingOptionViewModel
         {
             RatingId   = r.RatingId,
@@ -178,19 +184,39 @@ public class MessageService : IMessageService
     public async Task<IEnumerable<MessageRowViewModel>> GetForSenderAsync(int senderId, int limit = 200)
     {
         var msgs = await _msgRepo.SearchAsync(
-            null, senderId, null, null, null, null, 1, limit);
+            senderId, null, null, null, null, 1, limit);
 
         return msgs.Select(m => new MessageRowViewModel
         {
-            MessageId    = m.MessageId,
-            RunId        = m.RunId,
-            SenderId     = m.SenderId,
-            EmailAddress = m.EmailAddress,
-            RatingName   = m.RatingName,
-            Subject      = m.Subject,
-            Snippet      = m.Snippet,
-            InternalDate = m.InternalDate,
-            FromRaw      = m.FromRaw
+            MessageId      = m.MessageId,
+            RunId          = m.RunId,
+            SenderId       = m.SenderId,
+            EmailAddress   = m.EmailAddress,
+            RatingName     = m.RatingName,
+            Subject        = m.Subject,
+            Snippet        = m.Snippet,
+            InternalDate   = m.InternalDate,
+            FromRaw        = m.FromRaw,
+            GmailMessageId = m.GmailMessageId
+        });
+    }
+
+    public async Task<IEnumerable<MessageRowViewModel>> GetByGmailIdsAsync(IEnumerable<string> gmailIds)
+    {
+        var msgs = await _msgRepo.GetByGmailIdsAsync(gmailIds);
+        return msgs.Select(m => new MessageRowViewModel
+        {
+            MessageId      = m.MessageId,
+            RunId          = m.RunId,
+            SenderId       = m.SenderId,
+            EmailAddress   = m.EmailAddress,
+            RatingName     = m.RatingName,
+            Subject        = m.Subject,
+            Snippet        = m.Snippet,
+            InternalDate   = m.InternalDate,
+            FromRaw        = m.FromRaw,
+            GmailMessageId = m.GmailMessageId,
+            IsPriority     = true
         });
     }
 }
@@ -245,7 +271,7 @@ public class SenderService : ISenderService
         if (sender == null) return null;
 
         var allMessages = await _msgRepo.SearchAsync(
-            null, senderId, null, null, null, null, 1, int.MaxValue);
+            senderId, null, null, null, null, 1, int.MaxValue);
 
         var ratings = await _ratingRepo.GetAllAsync();
 
@@ -297,7 +323,7 @@ public class SenderService : ISenderService
         if (sender == null) return null;
 
         var allMessages = await _msgRepo.SearchAsync(
-            null, senderId, null, null, null, null, 1, int.MaxValue);
+            senderId, null, null, null, null, 1, int.MaxValue);
 
         var ratings = await _ratingRepo.GetAllAsync();
 
@@ -437,6 +463,32 @@ public class SenderService : ISenderService
     }
 }
 
+public interface IPriorityMessageService
+{
+    /// <summary>Toggle priority state. Returns true if now priority, false if removed.</summary>
+    Task<bool>        ToggleAsync(string gmailMessageId);
+    Task<HashSet<string>> GetAllIdsAsync();
+}
+
+public class PriorityMessageService : IPriorityMessageService
+{
+    private readonly IPriorityMessageRepository _repo;
+    public PriorityMessageService(IPriorityMessageRepository repo) => _repo = repo;
+
+    public async Task<bool> ToggleAsync(string gmailMessageId)
+    {
+        if (await _repo.IsTrackedAsync(gmailMessageId))
+        {
+            await _repo.RemoveAsync(gmailMessageId);
+            return false;
+        }
+        await _repo.AddAsync(gmailMessageId);
+        return true;
+    }
+
+    public Task<HashSet<string>> GetAllIdsAsync() => _repo.GetAllIdsAsync();
+}
+
 public class RatingService : IRatingService
 {
     private readonly IRatingRepository _ratingRepo;
@@ -545,7 +597,7 @@ public class GmailHeaderRecord
 
 public interface IGmailIngestService
 {
-    Task<IngestResultViewModel> RunAsync(int days = 7, Action<string>? progress = null);
+    Task<IngestResultViewModel> RunAsync(int days = 14, Action<string>? progress = null);
 }
 
 public class GmailIngestService : IGmailIngestService
@@ -559,9 +611,9 @@ public class GmailIngestService : IGmailIngestService
         _config = config;
     }
 
-    public async Task<IngestResultViewModel> RunAsync(int days = 7, Action<string>? progress = null)
+    public async Task<IngestResultViewModel> RunAsync(int days = 14, Action<string>? progress = null)
     {
-        days = Math.Clamp(days, 1, 7);
+        days = Math.Clamp(days, 1, 14);
 
         var startedAt  = DateTime.UtcNow;
         var pythonExe  = _config["GmailIngest:PythonExe"]  ?? "python";
@@ -569,12 +621,34 @@ public class GmailIngestService : IGmailIngestService
         var exportsDir = _config["GmailIngest:ExportsDir"] ?? throw new InvalidOperationException("GmailIngest:ExportsDir not configured");
         var workingDir = _config["GmailIngest:WorkingDir"] ?? Path.GetDirectoryName(scriptPath)!;
 
-        // Step 1: Run the Python harvester with the selected day range
+        // Step 1: Wipe existing batch data — preserve starred messages older than batch window
+        progress?.Invoke("Clearing previous batch (keeping older starred)…");
+        var batchCutoff = DateTime.UtcNow.AddDays(-days).ToString("o");
+        var starredIds = await _db.PriorityMessages
+            .Select(p => p.GmailMessageId)
+            .ToListAsync();
+        var starredIdSet = starredIds.ToHashSet();
+
+        await _db.Messages
+            .Where(m =>
+                // Delete if: not starred, OR starred but within batch window (will be re-imported)
+                m.GmailMessageId == null
+                || !starredIdSet.Contains(m.GmailMessageId)
+                || (starredIdSet.Contains(m.GmailMessageId) && m.InternalDate != null && m.InternalDate.CompareTo(batchCutoff) >= 0))
+            .ExecuteDeleteAsync();
+
+        // Delete runs that no longer have any messages
+        var runsWithMessages = _db.Messages.Select(m => m.RunId).Distinct();
+        await _db.Runs
+            .Where(r => !runsWithMessages.Contains(r.RunId))
+            .ExecuteDeleteAsync();
+
+        // Step 2: Run the Python harvester with the selected day range
         progress?.Invoke("Running Python script…");
-        var scriptArgs = $"--query \"newer_than:{days}d\" --max 4000 --outdir \"{exportsDir}\"";
+        var scriptArgs = $"--query \"newer_than:{days}d\" --max 5000 --outdir \"{exportsDir}\"";
         await RunPythonScriptAsync(pythonExe, scriptPath, workingDir, scriptArgs);
 
-        // Step 2: Read and deserialize the ETL contract JSON
+        // Step 3: Read and deserialize the ETL contract JSON
         progress?.Invoke("Reading extracted data…");
         var jsonPath = Path.Combine(exportsDir, "gmail_headers.json");
         var json     = await File.ReadAllTextAsync(jsonPath);
@@ -584,27 +658,8 @@ public class GmailIngestService : IGmailIngestService
         var meta    = payload.Meta;
         var records = payload.Messages;
 
-        // Step 3: Filter duplicates by gmail_message_id
-        var incomingIds = records
-            .Where(r => !string.IsNullOrEmpty(r.GmailMessageId))
-            .Select(r => r.GmailMessageId)
-            .ToHashSet();
-
-        var existingIds = (await _db.Messages
-            .Where(m => m.GmailMessageId != null && incomingIds.Contains(m.GmailMessageId!))
-            .Select(m => m.GmailMessageId!)
-            .ToListAsync())
-            .ToHashSet();
-
-        var newRecords = records
-            .Where(r => !existingIds.Contains(r.GmailMessageId)
-                        && !string.IsNullOrWhiteSpace(r.CanonicalEmail))
-            .ToList();
-
-        int skipped = records.Count - newRecords.Count;
-
         // Step 4: Create run record — sourced from harvester metadata
-        progress?.Invoke($"Creating run record ({newRecords.Count} new messages)…");
+        progress?.Invoke($"Creating run record ({records.Count} messages)…");
         var now = DateTime.UtcNow;
         var run = new Run
         {
@@ -616,16 +671,23 @@ public class GmailIngestService : IGmailIngestService
         _db.Runs.Add(run);
         await _db.SaveChangesAsync();
 
-        // Step 5: Upsert senders — preserve existing ratings, increment msg_count
+        // Step 5: Upsert senders — preserve existing ratings
+        // Count surviving starred messages per sender before resetting
+        progress?.Invoke("Resetting sender message counts…");
+        var starredCountsBySender = await _db.Messages
+            .GroupBy(m => m.SenderId)
+            .Select(g => new { SenderId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.SenderId, x => x.Count);
+        await _db.Senders.ExecuteUpdateAsync(s => s.SetProperty(x => x.MsgCount, 0));
+
         progress?.Invoke("Upserting senders…");
-        var groups = newRecords
-            .GroupBy(r => r.CanonicalEmail.Trim().ToLower())
+        var groups = records
+            .GroupBy(r => ResolveEmail(r.CanonicalEmail, r.FromRaw, r.GmailMessageId))
             .ToList();
 
         int newSenders = 0, updatedSenders = 0;
         var senderIdMap = new Dictionary<string, int>();
 
-        // Load all matching existing senders in one query
         var incomingEmails = groups.Select(g => g.Key).ToList();
         var existingSenders = await _db.Senders
             .Where(s => incomingEmails.Contains(s.EmailAddress))
@@ -642,9 +704,10 @@ public class GmailIngestService : IGmailIngestService
 
             if (existingMap.TryGetValue(email, out var existing))
             {
-                existing.MsgCount  += batchCount;
-                existing.LastSeen   = now.ToString("o");
-                existing.UpdatedAt  = now.ToString("o");
+                starredCountsBySender.TryGetValue(existing.SenderId, out var kept);
+                existing.MsgCount  = batchCount + kept;
+                existing.LastSeen  = now.ToString("o");
+                existing.UpdatedAt = now.ToString("o");
                 if (string.IsNullOrEmpty(existing.DisplayName) && !string.IsNullOrEmpty(first.DisplayName))
                     existing.DisplayName = first.DisplayName;
                 updatedSenders++;
@@ -658,7 +721,7 @@ public class GmailIngestService : IGmailIngestService
                     FirstSeen    = now.ToString("o"),
                     LastSeen     = now.ToString("o"),
                     MsgCount     = batchCount,
-                    RatingId     = 3,   // Default rating
+                    RatingId     = 3,
                     CreatedAt    = now.ToString("o"),
                     UpdatedAt    = now.ToString("o")
                 };
@@ -668,29 +731,37 @@ public class GmailIngestService : IGmailIngestService
             }
         }
 
-        // Single save for all sender changes
         await _db.SaveChangesAsync();
 
-        // Build senderIdMap — EF has populated PKs on new entities after save
         foreach (var s in existingSenders)
             senderIdMap[s.EmailAddress] = s.SenderId;
         foreach (var s in newSenderEntities)
             senderIdMap[s.EmailAddress] = s.SenderId;
 
-        // Step 6: Batch insert new messages — all fields now mapped from harvester
-        progress?.Invoke($"Inserting {newRecords.Count} messages…");
+        // Step 6: Insert new messages — skip any that survived as starred
+        progress?.Invoke($"Inserting {records.Count} messages…");
+        var existingGmailIds = await _db.Messages
+            .Where(m => m.GmailMessageId != null)
+            .Select(m => m.GmailMessageId!)
+            .ToListAsync();
+        var existingIdSet = existingGmailIds.ToHashSet();
+
         var messages = new List<Message>();
-        foreach (var rec in newRecords)
+        int skipped = 0;
+        foreach (var rec in records)
         {
-            var email = rec.CanonicalEmail.Trim().ToLower();
+            var email = ResolveEmail(rec.CanonicalEmail, rec.FromRaw, rec.GmailMessageId);
             if (!senderIdMap.TryGetValue(email, out var senderId)) continue;
+
+            // Skip — this message survived the delete as a starred message
+            if (existingIdSet.Contains(rec.GmailMessageId)) { skipped++; continue; }
 
             messages.Add(new Message
             {
                 RunId          = run.RunId,
                 SenderId       = senderId,
                 GmailMessageId = rec.GmailMessageId,
-                ThreadId       = string.IsNullOrEmpty(rec.ThreadId)    ? null : rec.ThreadId,
+                ThreadId       = string.IsNullOrEmpty(rec.ThreadId)     ? null : rec.ThreadId,
                 InternalDate   = string.IsNullOrEmpty(rec.InternalDate) ? null : rec.InternalDate,
                 HeaderDate     = string.IsNullOrEmpty(rec.HeaderDate)   ? null : rec.HeaderDate,
                 Subject        = string.IsNullOrEmpty(rec.Subject)      ? null : rec.Subject,
@@ -702,16 +773,7 @@ public class GmailIngestService : IGmailIngestService
         }
 
         _db.Messages.AddRange(messages);
-        try
-        {
-            await _db.SaveChangesAsync();
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException(
-                $"Message insert failed (run #{run.RunId} and {newSenders + updatedSenders} senders were already committed). " +
-                $"Detail: {ex.Message}", ex);
-        }
+        await _db.SaveChangesAsync();
 
         return new IngestResultViewModel
         {
@@ -725,6 +787,42 @@ public class GmailIngestService : IGmailIngestService
             StartedAt         = startedAt.ToString("o"),
             CompletedAt       = DateTime.UtcNow.ToString("o")
         };
+    }
+
+    /// <summary>
+    /// Resolves the canonical email key for a record using the fallback chain:
+    ///   1. canonical_email from JSON (legacy rule)
+    ///   2. ExtractCanonicalEmail(from_raw) if legacy is blank
+    ///   3. from_raw as-is if no @ found (identifiable exception)
+    ///   4. [no-from:{gmailMessageId}] if from_raw is also blank
+    /// </summary>
+    private static string ResolveEmail(string canonicalEmail, string fromRaw, string gmailMessageId)
+    {
+        // 1. Legacy canonical_email
+        if (!string.IsNullOrWhiteSpace(canonicalEmail))
+            return canonicalEmail.Trim().ToLower();
+
+        // 2. Extract from from_raw
+        if (!string.IsNullOrWhiteSpace(fromRaw))
+        {
+            var start = fromRaw.LastIndexOf('<');
+            var end   = fromRaw.LastIndexOf('>');
+            if (start >= 0 && end > start)
+            {
+                var extracted = fromRaw.Substring(start + 1, end - start - 1).Trim();
+                if (extracted.Contains('@'))
+                    return extracted.ToLowerInvariant();
+            }
+            var trimmed = fromRaw.Trim();
+            if (trimmed.Contains('@'))
+                return trimmed.ToLowerInvariant();
+
+            // 3. from_raw unparseable — store as-is (no @ flags it as exception)
+            return trimmed.ToLower();
+        }
+
+        // 4. Nothing available
+        return $"[no-from:{gmailMessageId}]";
     }
 
     private static async Task RunPythonScriptAsync(string pythonExe, string scriptPath, string workingDir, string scriptArgs = "")

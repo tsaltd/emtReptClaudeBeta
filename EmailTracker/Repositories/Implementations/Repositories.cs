@@ -54,7 +54,6 @@ public class MessageRepository : IMessageRepository
     public MessageRepository(AppDbContext db) => _db = db;
 
     public async Task<IEnumerable<VMessageWithSender>> SearchAsync(
-        int?    runId,
         int?    senderId,
         string? searchTerm,
         string? dateFrom,
@@ -63,7 +62,7 @@ public class MessageRepository : IMessageRepository
         int     page,
         int     pageSize)
     {
-        var q = BuildQuery(runId, senderId, searchTerm, dateFrom, dateTo, ratingFilter);
+        var q = BuildQuery(senderId, searchTerm, dateFrom, dateTo, ratingFilter);
         return await q.OrderBy(m => m.EmailAddress)
                       .ThenBy(m => m.FromRaw)
                       .ThenBy(m => m.Subject)
@@ -74,13 +73,12 @@ public class MessageRepository : IMessageRepository
     }
 
     public async Task<int> CountAsync(
-        int?    runId,
         int?    senderId,
         string? searchTerm,
         string? dateFrom,
         string? dateTo,
         string? ratingFilter) =>
-        await BuildQuery(runId, senderId, searchTerm, dateFrom, dateTo, ratingFilter).CountAsync();
+        await BuildQuery(senderId, searchTerm, dateFrom, dateTo, ratingFilter).CountAsync();
 
     public async Task<Message?> GetByIdAsync(int id) =>
         await _db.Messages.Include(m => m.Sender).Include(m => m.Run).FirstOrDefaultAsync(m => m.MessageId == id);
@@ -98,6 +96,14 @@ public class MessageRepository : IMessageRepository
         if (msg != null) { _db.Messages.Remove(msg); await _db.SaveChangesAsync(); }
     }
 
+    public async Task<IEnumerable<VMessageWithSender>> GetByGmailIdsAsync(IEnumerable<string> gmailIds)
+    {
+        var ids = gmailIds.ToList();
+        return await _db.VMessageWithSenders
+            .Where(m => m.GmailMessageId != null && ids.Contains(m.GmailMessageId))
+            .ToListAsync();
+    }
+
     public async Task<IEnumerable<(string FromRaw, int Count)>> GetFromRawBreakdownAsync(int senderId)
     {
         var result = await _db.Messages
@@ -110,7 +116,6 @@ public class MessageRepository : IMessageRepository
     }
 
     private IQueryable<VMessageWithSender> BuildQuery(
-        int?    runId,
         int?    senderId,
         string? searchTerm,
         string? dateFrom,
@@ -118,9 +123,6 @@ public class MessageRepository : IMessageRepository
         string? ratingFilter)
     {
         var q = _db.VMessageWithSenders.AsQueryable();
-
-        if (runId.HasValue)
-            q = q.Where(m => m.RunId == runId.Value);
 
         if (senderId.HasValue)
             q = q.Where(m => m.SenderId == senderId.Value);
@@ -195,30 +197,6 @@ public class SenderRepository : ISenderRepository
         return sender;
     }
 
-    public async Task<IEnumerable<VSenderWithRating>> GetTopBySendCountAsync(int? runId, int take = 10)
-    {
-        if (runId.HasValue)
-        {
-            // Get senders who appear in this run, ordered by message count in that run
-            var senderIdsInRun = await _db.Messages
-                .Where(m => m.RunId == runId.Value)
-                .GroupBy(m => m.SenderId)
-                .OrderByDescending(g => g.Count())
-                .Take(take)
-                .Select(g => g.Key)
-                .ToListAsync();
-
-            return await _db.VSenderWithRatings
-                .Where(s => senderIdsInRun.Contains(s.SenderId))
-                .ToListAsync();
-        }
-
-        return await _db.VSenderWithRatings
-            .OrderByDescending(s => s.MsgCount)
-            .Take(take)
-            .ToListAsync();
-    }
-
     public async Task UpdateRatingBulkAsync(IEnumerable<int> senderIds, int ratingId)
     {
         var ids = senderIds.ToList();
@@ -227,9 +205,23 @@ public class SenderRepository : ISenderRepository
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.RatingId, ratingId));
     }
 
+    public async Task<IEnumerable<VSenderWithRating>> GetTopSendersForRunAsync(int runId, int limit = 10)
+    {
+        var senderIdsInRun = _db.Messages
+            .Where(m => m.RunId == runId)
+            .Select(m => m.SenderId)
+            .Distinct();
+
+        return await _db.VSenderWithRatings
+            .Where(s => senderIdsInRun.Contains(s.SenderId))
+            .OrderByDescending(s => s.MsgCount)
+            .Take(limit)
+            .ToListAsync();
+    }
+
     private IQueryable<VSenderWithRating> BuildQuery(string? searchTerm, string? ratingFilter)
     {
-        var q = _db.VSenderWithRatings.AsQueryable();
+        var q = _db.VSenderWithRatings.Where(s => s.MsgCount > 0);
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -257,4 +249,29 @@ public class RatingRepository : IRatingRepository
 
     public async Task<Rating?> GetByIdAsync(int id) =>
         await _db.Ratings.FindAsync(id);
+}
+
+// ── Priority Message Repository ──────────────────────────────────
+public class PriorityMessageRepository : IPriorityMessageRepository
+{
+    private readonly AppDbContext _db;
+    public PriorityMessageRepository(AppDbContext db) => _db = db;
+
+    public async Task AddAsync(string gmailMessageId)
+    {
+        _db.PriorityMessages.Add(new PriorityMessage { GmailMessageId = gmailMessageId });
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task RemoveAsync(string gmailMessageId)
+    {
+        var row = await _db.PriorityMessages.FirstOrDefaultAsync(p => p.GmailMessageId == gmailMessageId);
+        if (row != null) { _db.PriorityMessages.Remove(row); await _db.SaveChangesAsync(); }
+    }
+
+    public async Task<bool> IsTrackedAsync(string gmailMessageId) =>
+        await _db.PriorityMessages.AnyAsync(p => p.GmailMessageId == gmailMessageId);
+
+    public async Task<HashSet<string>> GetAllIdsAsync() =>
+        (await _db.PriorityMessages.Select(p => p.GmailMessageId).ToListAsync()).ToHashSet();
 }

@@ -82,13 +82,18 @@ public class RunController : Controller
 // ── Message Controller ───────────────────────────────────────────
 public class MessageController : Controller
 {
-    private readonly IMessageService _messageService;
-    private readonly ISenderService  _senderService;
+    private readonly IMessageService         _messageService;
+    private readonly ISenderService          _senderService;
+    private readonly IRatingService          _ratingService;
+    private readonly IPriorityMessageService _priorityService;
 
-    public MessageController(IMessageService messageService, ISenderService senderService)
+    public MessageController(IMessageService messageService, ISenderService senderService,
+                             IRatingService ratingService, IPriorityMessageService priorityService)
     {
-        _messageService = messageService;
-        _senderService  = senderService;
+        _messageService  = messageService;
+        _senderService   = senderService;
+        _ratingService   = ratingService;
+        _priorityService = priorityService;
     }
 
     // GET /Message  — full page
@@ -103,7 +108,6 @@ public class MessageController : Controller
     [HttpGet]
     public async Task<IActionResult> Rows(
         string? searchTerm,
-        int?    runId,
         int?    senderId,
         string? dateFrom,
         string? dateTo,
@@ -114,7 +118,6 @@ public class MessageController : Controller
         var filters = new MessageSearchViewModel
         {
             SearchTerm   = searchTerm,
-            RunId        = runId,
             SenderId     = senderId,
             DateFrom     = dateFrom,
             DateTo       = dateTo,
@@ -173,81 +176,151 @@ public class MessageController : Controller
 
     // GET /Message/Grouped — CEA-paged tree view
     public async Task<IActionResult> Grouped(
-        string? searchTerm,
-        string  sortBy   = "count",
-        bool    sortAsc  = false,
-        int     page     = 1,
-        int     pageSize = 10)
+        string? searchTerm, string? ratingFilter, bool priorityOnly = false,
+        string sortBy = "count", bool sortAsc = false, int page = 1, int pageSize = 10)
     {
-        List<SenderSummaryViewModel> pageSenders;
+        var vm = await BuildGroupedViewModel(searchTerm, ratingFilter, priorityOnly, sortBy, sortAsc, page, pageSize);
+        return View(vm);
+    }
+
+    // GET /Message/CeaReports — same data, report layout (no pills)
+    public async Task<IActionResult> CeaReports(
+        string? searchTerm, string? ratingFilter, bool priorityOnly = false,
+        string sortBy = "count", bool sortAsc = false, int page = 1, int pageSize = 10)
+    {
+        var vm = await BuildGroupedViewModel(searchTerm, ratingFilter, priorityOnly, sortBy, sortAsc, page, pageSize);
+        return View(vm);
+    }
+
+    private async Task<MessageGroupedViewModel> BuildGroupedViewModel(
+        string? searchTerm, string? ratingFilter, bool priorityOnly,
+        string sortBy, bool sortAsc, int page, int pageSize)
+    {
+        var priorityIds = await _priorityService.GetAllIdsAsync();
+        var groups      = new List<CeaGroupViewModel>();
         int total;
 
-        if (sortBy == "email")
+        if (priorityOnly)
         {
-            // Load all matching senders, sort by email address in memory
-            var all = await _senderService.SearchAsync(new SenderSearchViewModel
+            var allPriorityMsgs = (await _messageService.GetByGmailIdsAsync(priorityIds))
+                .Where(m =>
+                    (string.IsNullOrEmpty(searchTerm)   || m.EmailAddress.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+                    (string.IsNullOrEmpty(ratingFilter) || m.RatingName == ratingFilter))
+                .ToList();
+
+            var bySender = allPriorityMsgs
+                .GroupBy(m => m.SenderId)
+                .OrderByDescending(g => g.Count())
+                .ToList();
+
+            total = bySender.Count;
+
+            foreach (var senderGroup in bySender.Skip((page - 1) * pageSize).Take(pageSize))
             {
-                SearchTerm = searchTerm,
-                SortAsc    = false,
-                Page       = 1,
-                PageSize   = int.MaxValue
-            });
-            var sorted = (sortAsc
-                ? all.Senders.OrderBy(s => s.EmailAddress)
-                : all.Senders.OrderByDescending(s => s.EmailAddress)).ToList();
-            total       = sorted.Count;
-            pageSenders = sorted.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+                var first = senderGroup.First();
+                var fromRawGroups = senderGroup
+                    .GroupBy(m => m.FromRaw ?? "(no from header)")
+                    .OrderByDescending(g => g.Count())
+                    .Select(g => new FromRawGroupViewModel
+                    {
+                        FromRaw  = g.Key,
+                        Messages = g.OrderByDescending(m => m.InternalDate).ToList()
+                    }).ToList();
+
+                groups.Add(new CeaGroupViewModel
+                {
+                    SenderId      = first.SenderId,
+                    EmailAddress  = first.EmailAddress,
+                    RatingName    = first.RatingName,
+                    MsgCount      = senderGroup.Count(),
+                    FromRawGroups = fromRawGroups
+                });
+            }
         }
         else
         {
-            var result = await _senderService.SearchAsync(new SenderSearchViewModel
+            List<SenderSummaryViewModel> pageSenders;
+
+            if (sortBy == "email")
             {
-                SearchTerm = searchTerm,
-                SortAsc    = sortAsc,
-                Page       = page,
-                PageSize   = pageSize
-            });
-            total       = result.TotalCount;
-            pageSenders = result.Senders.ToList();
-        }
-
-        // Build CEA groups — one lightweight message fetch per sender
-        var groups = new List<CeaGroupViewModel>();
-        foreach (var s in pageSenders)
-        {
-            var msgs = await _messageService.GetForSenderAsync(s.SenderId, 200);
-
-            var fromRawGroups = msgs
-                .GroupBy(m => m.FromRaw ?? "(no from header)")
-                .OrderByDescending(g => g.Count())
-                .Select(g => new FromRawGroupViewModel
+                var all = await _senderService.SearchAsync(new SenderSearchViewModel
                 {
-                    FromRaw  = g.Key,
-                    Messages = g.OrderByDescending(m => m.InternalDate).ToList()
-                }).ToList();
-
-            groups.Add(new CeaGroupViewModel
+                    SearchTerm   = searchTerm,
+                    RatingFilter = ratingFilter,
+                    SortAsc      = false,
+                    Page         = 1,
+                    PageSize     = int.MaxValue
+                });
+                var sorted = (sortAsc
+                    ? all.Senders.OrderBy(s => s.EmailAddress)
+                    : all.Senders.OrderByDescending(s => s.EmailAddress)).ToList();
+                total       = sorted.Count;
+                pageSenders = sorted.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            }
+            else
             {
-                SenderId      = s.SenderId,
-                EmailAddress  = s.EmailAddress,
-                RatingName    = s.RatingName,
-                MsgCount      = s.MsgCount,
-                FromRawGroups = fromRawGroups
-            });
+                var result = await _senderService.SearchAsync(new SenderSearchViewModel
+                {
+                    SearchTerm   = searchTerm,
+                    RatingFilter = ratingFilter,
+                    SortAsc      = sortAsc,
+                    Page         = page,
+                    PageSize     = pageSize
+                });
+                total       = result.TotalCount;
+                pageSenders = result.Senders.ToList();
+            }
+
+            foreach (var s in pageSenders)
+            {
+                var msgs = (await _messageService.GetForSenderAsync(s.SenderId, 200)).ToList();
+                foreach (var m in msgs.Where(m => m.GmailMessageId != null))
+                    m.IsPriority = priorityIds.Contains(m.GmailMessageId!);
+
+                var fromRawGroups = msgs
+                    .GroupBy(m => m.FromRaw ?? "(no from header)")
+                    .OrderByDescending(g => g.Count())
+                    .Select(g => new FromRawGroupViewModel
+                    {
+                        FromRaw  = g.Key,
+                        Messages = g.OrderByDescending(m => m.InternalDate).ToList()
+                    }).ToList();
+
+                groups.Add(new CeaGroupViewModel
+                {
+                    SenderId      = s.SenderId,
+                    EmailAddress  = s.EmailAddress,
+                    RatingName    = s.RatingName,
+                    MsgCount      = s.MsgCount,
+                    FromRawGroups = fromRawGroups
+                });
+            }
         }
 
-        var vm = new MessageGroupedViewModel
-        {
-            SearchTerm   = searchTerm,
-            SortBy       = sortBy,
-            SortAsc      = sortAsc,
-            Page         = page,
-            PageSize     = pageSize,
-            TotalSenders = total,
-            CeaGroups    = groups
-        };
+        var ratings = await _ratingService.GetAllAsync();
 
-        return View(vm);
+        return new MessageGroupedViewModel
+        {
+            SearchTerm       = searchTerm,
+            RatingFilter     = ratingFilter,
+            PriorityOnly     = priorityOnly,
+            SortBy           = sortBy,
+            SortAsc          = sortAsc,
+            Page             = page,
+            PageSize         = pageSize,
+            TotalSenders     = total,
+            CeaGroups        = groups,
+            AvailableRatings = ratings
+        };
+    }
+
+    // POST /Message/TogglePriority
+    [HttpPost]
+    public async Task<IActionResult> TogglePriority([FromBody] string gmailMessageId)
+    {
+        if (string.IsNullOrEmpty(gmailMessageId)) return BadRequest();
+        var isPriority = await _priorityService.ToggleAsync(gmailMessageId);
+        return Json(new { isPriority });
     }
 
     private async Task<MessageBrowseViewModel> BuildSenderNav(
@@ -427,9 +500,9 @@ public class GmailIngestController : Controller
     // POST /GmailIngest/Start — fires job, returns jobId immediately
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Start([FromForm] int days = 7)
+    public IActionResult Start([FromForm] int days = 14)
     {
-        days = Math.Clamp(days, 1, 7);
+        days = Math.Clamp(days, 1, 14);
 
         var job = _jobStore.Create();
         job.Status = "running";

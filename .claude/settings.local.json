@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build:*)",
+      "Bash(git diff:*)",
+      "Bash(sqlite3 \"C:\\\\Users\\\\wp710\\\\OneDrive\\\\Dev\\\\BetaLab\\\\Gmail_Analysis_Solution\\\\GmailAnalysisDB\\\\db_runtime\\\\gmailanalysis.db\" \"SELECT COUNT\\(*\\) FROM priority_message\")"
+    ]
+  }
+}

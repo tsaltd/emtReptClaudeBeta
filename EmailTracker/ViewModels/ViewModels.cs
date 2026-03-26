@@ -37,7 +37,6 @@ public class RunDetailViewModel
     public string? SourceLabel  { get; set; }
     public int     MessageCount { get; set; }
     public int     SenderCount  { get; set; }
-
     public IEnumerable<SenderSummaryViewModel> TopSenders { get; set; } = [];
 }
 
@@ -58,6 +57,7 @@ public class MessageRowViewModel
     public string? FromRaw        { get; set; }
     public string? GmailMessageId { get; set; }
     public string? ThreadId       { get; set; }
+    public bool    IsPriority     { get; set; }
 
     public string DisplayDate =>
         DateTime.TryParse(InternalDate, out var dt) ? dt.ToString("MMM d, yyyy h:mm tt") : (InternalDate ?? "—");
@@ -67,7 +67,6 @@ public class MessageSearchViewModel
 {
     // ── Filter inputs (bound from AJAX request) ──────────────────
     public string? SearchTerm   { get; set; }
-    public int?    RunId        { get; set; }
     public int?    SenderId     { get; set; }
     public string? DateFrom     { get; set; }
     public string? DateTo       { get; set; }
@@ -81,7 +80,6 @@ public class MessageSearchViewModel
     public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
 
     // ── Filter options for dropdowns ─────────────────────────────
-    public IEnumerable<RunSummaryViewModel>    AvailableRuns    { get; set; } = [];
     public IEnumerable<RatingOptionViewModel>  AvailableRatings { get; set; } = [];
 }
 
@@ -231,6 +229,8 @@ public class CeaGroupViewModel
 public class MessageGroupedViewModel
 {
     public string? SearchTerm   { get; set; }
+    public string? RatingFilter { get; set; }
+    public bool    PriorityOnly { get; set; }
     public string  SortBy       { get; set; } = "count";   // "count" | "email"
     public bool    SortAsc      { get; set; }
     public int     Page         { get; set; } = 1;
@@ -240,7 +240,8 @@ public class MessageGroupedViewModel
     public bool    HasPrev      => Page > 1;
     public bool    HasNext      => Page < TotalPages;
 
-    public IEnumerable<CeaGroupViewModel> CeaGroups { get; set; } = [];
+    public IEnumerable<CeaGroupViewModel>     CeaGroups        { get; set; } = [];
+    public IEnumerable<RatingOptionViewModel> AvailableRatings { get; set; } = [];
 }
 
 // ════════════════════════════════════════════════════════════════

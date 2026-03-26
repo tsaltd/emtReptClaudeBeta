@@ -8,10 +8,11 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     // Core tables
-    public DbSet<Rating>  Ratings  { get; set; }
-    public DbSet<Run>     Runs     { get; set; }
-    public DbSet<Sender>  Senders  { get; set; }
-    public DbSet<Message> Messages { get; set; }
+    public DbSet<Rating>          Ratings          { get; set; }
+    public DbSet<Run>             Runs             { get; set; }
+    public DbSet<Sender>          Senders          { get; set; }
+    public DbSet<Message>         Messages         { get; set; }
+    public DbSet<PriorityMessage> PriorityMessages { get; set; }
 
     // SQLite views (keyless / read-only)
     public DbSet<VSenderWithRating>  VSenderWithRatings  { get; set; }
@@ -65,6 +66,13 @@ public class AppDbContext : DbContext
              .WithMany(s => s.Messages)
              .HasForeignKey(m => m.SenderId)
              .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── PriorityMessage ──────────────────────────────────────────
+        modelBuilder.Entity<PriorityMessage>(e =>
+        {
+            e.ToTable("priority_message");
+            e.HasIndex(p => p.GmailMessageId).IsUnique();
         });
 
         // ── Views (keyless) ─────────────────────────────────────────
