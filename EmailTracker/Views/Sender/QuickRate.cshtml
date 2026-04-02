@@ -54,6 +54,11 @@
 
     /* ── Individual rating cell ──────────────────────────────────── */
     .rating-cell { min-width: 150px; }
+
+    /* ── Darker text ─────────────────────────────────────────────── */
+    .table-card .table tbody td.text-muted { color: #444 !important; }
+    .table-card .table thead th { color: #333 !important; }
+    .text-muted.small, small.text-muted { color: #555 !important; }
 </style>
 }
 
@@ -218,6 +223,17 @@
     var token     = $('input[name="__RequestVerificationToken"]').val();
     var chosenId  = null;
 
+    // ── sessionStorage selection persistence ─────────────────────
+    var STORE_KEY        = 'qr-selected';
+    var STORE_RATING_KEY = 'qr-chosen-rating';
+    function loadIds()      { try { return new Set(JSON.parse(sessionStorage.getItem(STORE_KEY) || '[]')); } catch(e) { return new Set(); } }
+    function saveIds()      { sessionStorage.setItem(STORE_KEY, JSON.stringify([...selectedIds])); }
+    function saveRating(id) { if (id !== null) sessionStorage.setItem(STORE_RATING_KEY, id); else sessionStorage.removeItem(STORE_RATING_KEY); }
+    function clearIds()     { selectedIds.clear(); sessionStorage.removeItem(STORE_KEY); sessionStorage.removeItem(STORE_RATING_KEY); }
+    var selectedIds = loadIds();
+    var storedRating = sessionStorage.getItem(STORE_RATING_KEY);
+    if (storedRating !== null) chosenId = parseInt(storedRating);
+
     // ── Individual row rating select ─────────────────────────────
     $(document).on('change', '.rating-select', function () {
         var senderId = $(this).data('sender-id');
@@ -236,15 +252,21 @@
 
     // ── Checkbox selection ───────────────────────────────────────
     $('#cb-all').on('change', function () {
-        $('.sender-cb').prop('checked', this.checked);
-        $('.sender-cb').each(function () {
-            $(this).closest('tr').toggleClass('selected', this.checked);
+        var checked = this.checked;
+        $('.sender-cb').prop('checked', checked).each(function () {
+            var id = parseInt($(this).val());
+            $(this).closest('tr').toggleClass('selected', checked);
+            if (checked) selectedIds.add(id); else selectedIds.delete(id);
         });
+        saveIds();
         updateBulkBar();
     });
 
     $(document).on('change', '.sender-cb', function () {
+        var id = parseInt($(this).val());
         $(this).closest('tr').toggleClass('selected', this.checked);
+        if (this.checked) selectedIds.add(id); else selectedIds.delete(id);
+        saveIds();
         var allChecked = $('.sender-cb').length === $('.sender-cb:checked').length;
         $('#cb-all').prop('checked', allChecked);
         updateBulkBar();
@@ -262,10 +284,12 @@
         $('.bulk-rating-btn').removeClass('chosen');
         $(this).addClass('chosen');
         chosenId = parseInt($(this).data('rating-id'));
+        saveRating(chosenId);
         $('#btn-bulk-apply').prop('disabled', false);
     });
 
     $('#btn-deselect').on('click', function () {
+        clearIds();
         $('.sender-cb, #cb-all').prop('checked', false);
         $('tbody tr').removeClass('selected');
         updateBulkBar();
@@ -289,7 +313,7 @@
                     setTimeout(() => $row.removeClass('table-success'), 1500);
                 });
                 showToast('Applied "' + res.ratingName + '" to ' + res.count + ' sender(s)', true);
-                // Deselect all
+                clearIds();
                 $('.sender-cb, #cb-all').prop('checked', false);
                 $('tbody tr').removeClass('selected');
                 chosenId = null;
@@ -310,9 +334,21 @@
             $('#bulk-bar').removeClass('visible');
             $('.bulk-rating-btn').removeClass('chosen');
             chosenId = null;
+            saveRating(null);
             $('#btn-bulk-apply').prop('disabled', true);
         }
     }
+
+    // ── Warn on tab close / refresh when apply is pending ────────
+    window.addEventListener('beforeunload', function (e) {
+        if (selectedIds.size > 0 && chosenId !== null) {
+            e.preventDefault();
+            e.returnValue = '';
+            // User is leaving — drop the chosen rating so it doesn't restore
+            saveRating(null);
+            chosenId = null;
+        }
+    });
 
     function postRating(senderIds, ratingId, cb) {
         $.ajax({
@@ -334,6 +370,27 @@
             success: cb,
             error: function () { showToast('Network error — not saved.', false); }
         });
+    }
+
+    // ── Restore selections for senders on this page ───────────────
+    if (selectedIds.size > 0) {
+        $('.sender-cb').each(function () {
+            if (selectedIds.has(parseInt($(this).val()))) {
+                $(this).prop('checked', true);
+                $(this).closest('tr').addClass('selected');
+            }
+        });
+        var allChecked = $('.sender-cb').length > 0 && $('.sender-cb').length === $('.sender-cb:checked').length;
+        $('#cb-all').prop('checked', allChecked);
+        updateBulkBar();
+        // Restore chosen bulk rating
+        if (chosenId !== null) {
+            var $btn = $('.bulk-rating-btn[data-rating-id="' + chosenId + '"]');
+            if ($btn.length) {
+                $btn.addClass('chosen');
+                $('#btn-bulk-apply').prop('disabled', false);
+            }
+        }
     }
 
     function showToast(msg, success) {

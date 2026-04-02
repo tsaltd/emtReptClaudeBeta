@@ -9,10 +9,10 @@
     <style>
         :root {
             --sidebar-width: 220px;
+            --sidebar-collapsed-width: 52px;
             --accent: #0d6efd;
             --sidebar-bg: #1a1d23;
             --sidebar-text: #adb5bd;
-            --sidebar-hover: #0d6efd22;
         }
         body { display: flex; min-height: 100vh; background: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
 
@@ -21,37 +21,60 @@
             width: var(--sidebar-width); background: var(--sidebar-bg);
             color: var(--sidebar-text); display: flex; flex-direction: column;
             position: fixed; top: 0; left: 0; height: 100vh; z-index: 100;
+            transition: width .2s ease; overflow: hidden;
         }
+        #sidebar.collapsed { width: var(--sidebar-collapsed-width); }
+
+        .sidebar-toggle-row {
+            display: flex; justify-content: flex-end;
+            padding: .5rem .75rem .25rem;
+        }
+        #btn-sidebar-toggle {
+            background: none; border: none; color: #adb5bd; cursor: pointer;
+            padding: 0; font-size: .85rem; line-height: 1;
+        }
+        #btn-sidebar-toggle:hover { color: #fff; }
         #sidebar .brand {
-            padding: 1.25rem 1.5rem; font-size: 1rem; font-weight: 700;
+            padding: .5rem 1.5rem .75rem; font-size: 1rem; font-weight: 700;
             color: #fff; border-bottom: 1px solid #2d3139; letter-spacing: .5px;
+            white-space: nowrap; min-width: var(--sidebar-width);
         }
         #sidebar .brand span { color: var(--accent); }
-        #sidebar nav { flex: 1; padding: .75rem 0; }
+
+        #sidebar nav { flex: 1; padding: .75rem 0; overflow: hidden; }
         #sidebar nav a {
             display: flex; align-items: center; gap: .75rem;
             padding: .6rem 1.5rem; color: var(--sidebar-text);
-            text-decoration: none; font-size: .875rem; transition: all .15s;
+            text-decoration: none; font-size: .875rem;
+            white-space: nowrap; min-width: var(--sidebar-width);
         }
-        #sidebar nav a:hover, #sidebar nav a.active {
-            color: #fff; background: var(--sidebar-hover);
+        #sidebar nav a.active {
+            color: #fff; background: #0d6efd22;
             border-left: 3px solid var(--accent);
         }
-        #sidebar nav a i { width: 16px; text-align: center; }
+        #sidebar nav a i { width: 16px; text-align: center; flex-shrink: 0; }
         #sidebar .sidebar-footer {
             padding: 1rem 1.5rem; font-size: .75rem;
             color: #555; border-top: 1px solid #2d3139;
+            white-space: nowrap; min-width: var(--sidebar-width);
         }
 
         /* Main content */
-        #main { margin-left: var(--sidebar-width); flex: 1; display: flex; flex-direction: column; }
+        #main { margin-left: var(--sidebar-width); flex: 1; display: flex; flex-direction: column; transition: margin-left .2s ease; }
+        #main.sidebar-collapsed { margin-left: var(--sidebar-collapsed-width); }
         #topbar {
             background: #fff; border-bottom: 1px solid #dee2e6;
             padding: .75rem 1.5rem; display: flex; align-items: center;
             justify-content: space-between; position: sticky; top: 0; z-index: 50;
         }
         #topbar h1 { font-size: 1.1rem; font-weight: 600; margin: 0; color: #212529; }
-        #content { padding: 1.5rem; flex: 1; }
+        #content { padding: 1.5rem; flex: 1; color: #212529; }
+
+        /* Darker content text */
+        #content .text-muted { color: #555 !important; }
+        #content small.text-muted { color: #666 !important; }
+        .table-card .table tbody td { color: #212529; }
+        .table-card .table thead th { color: #444; }
 
         /* Cards */
         .stat-card { border: none; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
@@ -89,7 +112,12 @@
 
 <!-- Sidebar -->
 <aside id="sidebar">
-    <div class="brand">📧 Email<span>Tracker</span></div>
+    <div class="sidebar-toggle-row">
+        <button id="btn-sidebar-toggle" title="Toggle sidebar"><i class="fas fa-chevron-left"></i></button>
+    </div>
+    <div class="brand">
+        <span>📧 Email<span>Tracker</span></span>
+    </div>
     <nav>
         <a asp-controller="Home"    asp-action="Index"  class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Home"    ? "active" : "")">
             <i class="fas fa-tachometer-alt"></i> Dashboard
@@ -153,6 +181,24 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
 <script>
+    // Sidebar collapse
+    (function () {
+        var collapsed = localStorage.getItem('sidebar-collapsed') === '1';
+        function apply(c) {
+            $('#sidebar').toggleClass('collapsed', c);
+            $('#main').toggleClass('sidebar-collapsed', c);
+            $('#btn-sidebar-toggle i')
+                .toggleClass('fa-chevron-left', !c)
+                .toggleClass('fa-chevron-right', c);
+        }
+        apply(collapsed);
+        $('#btn-sidebar-toggle').on('click', function () {
+            collapsed = !collapsed;
+            localStorage.setItem('sidebar-collapsed', collapsed ? '1' : '0');
+            apply(collapsed);
+        });
+    })();
+
     // Global AJAX helpers
     $(document).ajaxStart(() => $('#ajax-spinner').show())
                .ajaxStop(()  => $('#ajax-spinner').hide());
