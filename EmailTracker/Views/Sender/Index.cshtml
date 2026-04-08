@@ -81,6 +81,7 @@
     var toast = new bootstrap.Toast(document.getElementById('rating-toast'), { delay: 2000 });
     var token = $('input[name="__RequestVerificationToken"]').val();
 
+
     $(document).on('click', '.rating-picker[data-mode="row"] .rating-swatch', function (e) {
         e.stopPropagation();
         var ratingId   = $(this).data('rating-id');

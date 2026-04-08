@@ -159,11 +159,12 @@ public class SenderRepository : ISenderRepository
     public async Task<IEnumerable<VSenderWithRating>> SearchAsync(
         string? searchTerm,
         string? ratingFilter,
+        string? statusFilter,
         int     page,
         int     pageSize,
         bool    sortAsc = false)
     {
-        var q = BuildQuery(searchTerm, ratingFilter);
+        var q = BuildQuery(searchTerm, ratingFilter, statusFilter);
         var ordered = sortAsc
             ? q.OrderBy(s => s.MsgCount)
             : q.OrderByDescending(s => s.MsgCount);
@@ -173,8 +174,8 @@ public class SenderRepository : ISenderRepository
                       .ToListAsync();
     }
 
-    public async Task<int> CountAsync(string? searchTerm, string? ratingFilter) =>
-        await BuildQuery(searchTerm, ratingFilter).CountAsync();
+    public async Task<int> CountAsync(string? searchTerm, string? ratingFilter, string? statusFilter) =>
+        await BuildQuery(searchTerm, ratingFilter, statusFilter).CountAsync();
 
     public async Task<Sender?> GetByIdAsync(int id) =>
         await _db.Senders.Include(s => s.Rating).FirstOrDefaultAsync(s => s.SenderId == id);
@@ -205,6 +206,13 @@ public class SenderRepository : ISenderRepository
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.RatingId, ratingId));
     }
 
+    public async Task SetStatusAsync(int senderId, int statusId)
+    {
+        await _db.Senders
+            .Where(s => s.SenderId == senderId)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.StatusId, statusId));
+    }
+
     public async Task<IEnumerable<VSenderWithRating>> GetTopSendersForRunAsync(int runId, int limit = 10)
     {
         var senderIdsInRun = _db.Messages
@@ -219,7 +227,7 @@ public class SenderRepository : ISenderRepository
             .ToListAsync();
     }
 
-    private IQueryable<VSenderWithRating> BuildQuery(string? searchTerm, string? ratingFilter)
+    private IQueryable<VSenderWithRating> BuildQuery(string? searchTerm, string? ratingFilter, string? statusFilter)
     {
         var q = _db.VSenderWithRatings.Where(s => s.MsgCount > 0);
 
@@ -236,6 +244,9 @@ public class SenderRepository : ISenderRepository
             var filters = ratingFilter.Split(',', StringSplitOptions.RemoveEmptyEntries);
             q = q.Where(s => filters.Contains(s.RatingName));
         }
+
+        if (!string.IsNullOrWhiteSpace(statusFilter))
+            q = q.Where(s => s.StatusName == statusFilter);
 
         return q;
     }

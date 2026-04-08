@@ -43,16 +43,18 @@ public interface ISenderRepository
     Task<IEnumerable<VSenderWithRating>> SearchAsync(
         string? searchTerm,
         string? ratingFilter,
+        string? statusFilter,
         int     page,
         int     pageSize,
         bool    sortAsc = false);
 
-    Task<int>            CountAsync(string? searchTerm, string? ratingFilter);
+    Task<int>            CountAsync(string? searchTerm, string? ratingFilter, string? statusFilter);
     Task<Sender?>        GetByIdAsync(int id);
     Task<Sender?>        GetByEmailAsync(string email);
     Task<Sender>         CreateAsync(Sender sender);
     Task<Sender>         UpdateAsync(Sender sender);
     Task                 UpdateRatingBulkAsync(IEnumerable<int> senderIds, int ratingId);
+    Task                 SetStatusAsync(int senderId, int statusId);
     Task<IEnumerable<VSenderWithRating>> GetTopSendersForRunAsync(int runId, int limit = 10);
 }
 

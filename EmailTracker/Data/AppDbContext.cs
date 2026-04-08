@@ -9,6 +9,7 @@ public class AppDbContext : DbContext
 
     // Core tables
     public DbSet<Rating>          Ratings          { get; set; }
+    public DbSet<SenderStatus>    SenderStatuses   { get; set; }
     public DbSet<Run>             Runs             { get; set; }
     public DbSet<Sender>          Senders          { get; set; }
     public DbSet<Message>         Messages         { get; set; }
@@ -36,16 +37,28 @@ public class AppDbContext : DbContext
             e.ToTable("run");
         });
 
+        // ── SenderStatus ─────────────────────────────────────────────
+        modelBuilder.Entity<SenderStatus>(e =>
+        {
+            e.ToTable("sender_status");
+        });
+
         // ── Sender ──────────────────────────────────────────────────
         modelBuilder.Entity<Sender>(e =>
         {
             e.ToTable("sender");
             e.HasIndex(s => s.EmailAddress).IsUnique();
             e.HasIndex(s => s.RatingId);
+            e.HasIndex(s => s.StatusId);
 
             e.HasOne(s => s.Rating)
              .WithMany(r => r.Senders)
              .HasForeignKey(s => s.RatingId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(s => s.Status)
+             .WithMany()
+             .HasForeignKey(s => s.StatusId)
              .OnDelete(DeleteBehavior.Restrict);
         });
 

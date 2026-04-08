@@ -36,9 +36,15 @@ public class Sender
     [Column("updated_at")]
     public string UpdatedAt { get; set; } = string.Empty;
 
+    [Column("status_id")]
+    public int StatusId { get; set; } = 1; // Default OPEN
+
     // Navigation
     [ForeignKey("RatingId")]
     public Rating? Rating { get; set; }
+
+    [ForeignKey("StatusId")]
+    public SenderStatus? Status { get; set; }
 
     public ICollection<Message> Messages { get; set; } = new List<Message>();
 }

@@ -358,6 +358,8 @@ public class MessageController : Controller
             EmailAddress     = cur?.EmailAddress ?? string.Empty,
             RatingName       = cur?.RatingName   ?? string.Empty,
             ColorCode        = cur?.ColorCode,
+            StatusId         = cur?.StatusId     ?? 1,
+            StatusName       = cur?.StatusName   ?? "OPEN",
             SenderSearch     = senderSearch,
             SenderSortAsc    = senderSortAsc,
             SenderPage       = page,
@@ -480,6 +482,19 @@ public class SenderController : Controller
 
         return Json(new { success = true, ratingName });
     }
+
+    // POST /Sender/SetStatus
+    // AJAX only — returns JSON { success, statusName }
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetStatus([FromBody] SetStatusRequest req)
+    {
+        var statusName = await _senderService.SetStatusAsync(req.SenderId, req.StatusId);
+        if (statusName == null)
+            return Json(new { success = false, message = "Sender or status not found." });
+
+        return Json(new { success = true, statusName });
+    }
 }
 
 // ── Gmail Ingest Controller ───────────────────────────────────────
@@ -600,6 +615,12 @@ public class GmailIngestController : Controller
 }
 
 // ── Request models ────────────────────────────────────────────────
+public class SetStatusRequest
+{
+    public int SenderId { get; set; }
+    public int StatusId { get; set; }
+}
+
 public class UpdateRatingRequest
 {
     public int SenderId { get; set; }

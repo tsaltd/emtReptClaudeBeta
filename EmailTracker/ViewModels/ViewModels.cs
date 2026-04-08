@@ -96,6 +96,8 @@ public class SenderSummaryViewModel
     public string  RatingName    { get; set; } = string.Empty;
     public string? ColorCode     { get; set; }
     public int     RatingId      { get; set; }
+    public int     StatusId      { get; set; } = 1;
+    public string  StatusName    { get; set; } = "OPEN";
     public string? FirstSeen     { get; set; }
     public string? LastSeen      { get; set; }
 
@@ -109,6 +111,7 @@ public class SenderSearchViewModel
 {
     public string?  SearchTerm   { get; set; }
     public string?  RatingFilter { get; set; }
+    public string?  StatusFilter { get; set; }
     public bool     SortAsc      { get; set; }
     public int      Page         { get; set; } = 1;
     public int      PageSize     { get; set; } = 50;
@@ -259,6 +262,8 @@ public class MessageBrowseViewModel
     public string  EmailAddress { get; set; } = string.Empty;
     public string  RatingName   { get; set; } = string.Empty;
     public string? ColorCode    { get; set; }
+    public int     StatusId     { get; set; } = 1;
+    public string  StatusName   { get; set; } = "OPEN";
 
     // ── Message list (flat, paginated) ────────────────────────────
     public IEnumerable<MessageRowViewModel> Messages    { get; set; } = [];

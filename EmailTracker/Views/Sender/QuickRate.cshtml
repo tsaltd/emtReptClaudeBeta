@@ -180,6 +180,7 @@
                 <th class="text-center" style="width:70px">Msgs</th>
                 <th style="width:100px">First Seen</th>
                 <th style="width:100px">Last Seen</th>
+                <th style="width:36px"></th>
                 <th class="rating-cell">Rating</th>
             </tr>
         </thead>
@@ -206,6 +207,13 @@
                     </td>
                     <td class="text-muted">@s.DisplayFirstSeen</td>
                     <td class="text-muted">@s.DisplayLastSeen</td>
+                    <td onclick="event.stopPropagation()">
+                        <button type="button"
+                                class="status-btn @(s.StatusName == "RATED" ? "rated" : "")"
+                                data-sender-id="@s.SenderId"
+                                data-next-status-id="@(s.StatusName == "RATED" ? 1 : 2)"
+                                title="@s.StatusName">@(s.StatusName == "RATED" ? "✓" : "○")</button>
+                    </td>
                     <td class="rating-cell" onclick="event.stopPropagation()">
                         <div class="rating-picker" data-mode="row">
                             <button type="button" class="rating-picker-btn has-color"

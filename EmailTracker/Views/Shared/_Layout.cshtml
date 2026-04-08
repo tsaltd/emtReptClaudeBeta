@@ -106,6 +106,16 @@
         .pagination { margin: 0; }
         .pagination .page-link { font-size: .875rem; }
 
+        /* Status toggle button (shared across pages) */
+        .status-btn {
+            width: 20px; height: 20px; border-radius: 50%;
+            border: 2px solid #adb5bd; background: none;
+            cursor: pointer; font-size: 11px; line-height: 1;
+            color: #adb5bd; padding: 0; transition: all .1s;
+        }
+        .status-btn:hover { border-color: #6c757d; color: #6c757d; }
+        .status-btn.rated { border-color: #28a745; color: #28a745; }
+
         /* Rating color picker (shared across pages) */
         .rating-picker { position: relative; display: inline-block; }
         .rating-picker-btn {
@@ -215,6 +225,29 @@
         if (!wasOpen) $panel.addClass('open');
     });
     $(document).on('click', function () { $('.rating-picker-panel').removeClass('open'); });
+
+    // Status toggle — shared across all pages
+    $(document).on('click', '.status-btn', function () {
+        var $btn     = $(this);
+        var senderId = parseInt($btn.data('sender-id'));
+        var nextId   = parseInt($btn.data('next-status-id'));
+        var token    = $('input[name="__RequestVerificationToken"]').val();
+        $.ajax({
+            url: '/Sender/SetStatus', method: 'POST',
+            contentType: 'application/json',
+            headers: { 'RequestVerificationToken': token },
+            data: JSON.stringify({ senderId: senderId, statusId: nextId }),
+            success: function (res) {
+                if (res.success) {
+                    var nowRated = res.statusName === 'RATED';
+                    $btn.toggleClass('rated', nowRated)
+                        .text(nowRated ? '✓' : '○')
+                        .attr('title', res.statusName)
+                        .data('next-status-id', nowRated ? 1 : 2);
+                }
+            }
+        });
+    });
 
     // Sidebar collapse
     (function () {

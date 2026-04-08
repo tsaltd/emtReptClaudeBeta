@@ -7,6 +7,7 @@
                 <th>Canonical Email</th>
                 <th>Display Name</th>
                 <th class="text-center">Msg Count</th>
+                <th style="width:36px"></th>
                 <th>Rating</th>
                 <th>First Seen</th>
                 <th>Last Seen</th>
@@ -16,7 +17,7 @@
         <tbody>
             @if (!Model.Senders.Any())
             {
-                <tr><td colspan="7" class="text-center text-muted py-4">No senders found.</td></tr>
+                <tr><td colspan="8" class="text-center text-muted py-4">No senders found.</td></tr>
             }
             @foreach (var s in Model.Senders)
             {
@@ -24,6 +25,13 @@
                     <td><code class="text-primary small">@s.EmailAddress</code></td>
                     <td class="text-muted small">@(s.DisplayName ?? "—")</td>
                     <td class="text-center"><span class="badge bg-primary rounded-pill">@s.MsgCount</span></td>
+                    <td onclick="event.stopPropagation()">
+                        <button type="button"
+                                class="status-btn @(s.StatusName == "RATED" ? "rated" : "")"
+                                data-sender-id="@s.SenderId"
+                                data-next-status-id="@(s.StatusName == "RATED" ? 1 : 2)"
+                                title="@s.StatusName">@(s.StatusName == "RATED" ? "✓" : "○")</button>
+                    </td>
                     <td onclick="event.stopPropagation()">
                         <div class="rating-picker" data-mode="row" data-sender-id="@s.SenderId">
                             <button type="button" class="rating-picker-btn has-color"

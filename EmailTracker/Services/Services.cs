@@ -48,6 +48,9 @@ public interface ISenderService
     /// <summary>Bulk update rating for multiple senders. Returns rating name or null on failure.</summary>
     Task<string?> UpdateRatingBulkAsync(IEnumerable<int> senderIds, int ratingId);
 
+    /// <summary>Set sender status (1=OPEN, 2=RATED). Returns status name or null on failure.</summary>
+    Task<string?> SetStatusAsync(int senderId, int statusId);
+
     string ExtractCanonicalEmail(string fromRaw);
 }
 
@@ -126,7 +129,9 @@ public class RunService : IRunService
                 MsgCount     = s.MsgCount,
                 RatingName   = s.RatingName,
                 ColorCode    = s.ColorCode,
-                RatingId     = s.RatingId
+                RatingId     = s.RatingId,
+                StatusId     = s.StatusId,
+                StatusName   = s.StatusName
             })
         };
     }
@@ -228,20 +233,22 @@ public class SenderService : ISenderService
     private readonly ISenderRepository  _senderRepo;
     private readonly IMessageRepository _msgRepo;
     private readonly IRatingRepository  _ratingRepo;
+    private readonly AppDbContext       _db;
 
-    public SenderService(ISenderRepository senderRepo, IMessageRepository msgRepo, IRatingRepository ratingRepo)
+    public SenderService(ISenderRepository senderRepo, IMessageRepository msgRepo, IRatingRepository ratingRepo, AppDbContext db)
     {
         _senderRepo = senderRepo;
         _msgRepo    = msgRepo;
         _ratingRepo = ratingRepo;
+        _db         = db;
     }
 
     public async Task<SenderSearchViewModel> SearchAsync(SenderSearchViewModel filters)
     {
         var senders = await _senderRepo.SearchAsync(
-            filters.SearchTerm, filters.RatingFilter, filters.Page, filters.PageSize, filters.SortAsc);
+            filters.SearchTerm, filters.RatingFilter, filters.StatusFilter, filters.Page, filters.PageSize, filters.SortAsc);
 
-        var total   = await _senderRepo.CountAsync(filters.SearchTerm, filters.RatingFilter);
+        var total   = await _senderRepo.CountAsync(filters.SearchTerm, filters.RatingFilter, filters.StatusFilter);
         var ratings = await _ratingRepo.GetAllAsync();
 
         filters.Senders = senders.Select(s => new SenderSummaryViewModel
@@ -253,6 +260,8 @@ public class SenderService : ISenderService
             RatingName   = s.RatingName,
             ColorCode    = s.ColorCode,
             RatingId     = s.RatingId,
+            StatusId     = s.StatusId,
+            StatusName   = s.StatusName,
             FirstSeen    = s.FirstSeen,
             LastSeen     = s.LastSeen
         });
@@ -394,7 +403,7 @@ public class SenderService : ISenderService
     public async Task<SenderBrowseViewModel?> GetBrowseAsync(int index)
     {
         // Pull full ordered list (msg_count DESC) — lightweight: only ids needed
-        var all = await _senderRepo.SearchAsync(null, null, 1, int.MaxValue, false);
+        var all = await _senderRepo.SearchAsync(null, null, null, 1, int.MaxValue, false);
         var list = all.ToList();
 
         int total = list.Count;
@@ -422,6 +431,14 @@ public class SenderService : ISenderService
                 SortOrder  = r.SortOrder
             })
         };
+    }
+
+    public async Task<string?> SetStatusAsync(int senderId, int statusId)
+    {
+        var status = await _db.SenderStatuses.FindAsync(statusId);
+        if (status == null) return null;
+        await _senderRepo.SetStatusAsync(senderId, statusId);
+        return status.StatusName;
     }
 
     public async Task<string?> UpdateRatingBulkAsync(IEnumerable<int> senderIds, int ratingId)
