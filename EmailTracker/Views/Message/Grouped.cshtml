@@ -93,18 +93,15 @@
         text-align: center;
     }
     .msg-cea-pill {
-        display: inline-block;
-        min-width: 320px;
-        padding: .4rem 1.75rem;
-        border-radius: 999px;
+        display: block;
+        max-width: 640px;
+        margin: .4rem auto;
+        padding: .5rem 3rem;
         text-align: center;
         line-height: 1.4;
         font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+        color: #fff;
     }
-    .msg-cea-pill[style*="GREEN"]  { background-color: #22c55e !important; color: #fff; }
-    .msg-cea-pill[style*="YELLOW"] { background-color: #eab308 !important; color: #1a1a1a; }
-    .msg-cea-pill[style*="ORANGE"] { background-color: #f97316 !important; color: #fff; }
-    .msg-cea-pill[style*="RED"]    { background-color: #ef4444 !important; color: #fff; }
     .msg-cea-link {
         font-size: .85rem;
         font-weight: 700;
@@ -315,7 +312,7 @@
                 <!-- CEA pill row -->
                 <tr class="msg-cea">
                     <td colspan="3">
-                        <span class="msg-cea-pill" style="background-color:@cea.RatingName">
+                        <span class="msg-cea-pill" style="background-color:@cea.ColorCode">
                             <a href="/Sender/Detail/@cea.SenderId" class="msg-cea-link">@cea.EmailAddress</a>
                             <span class="msg-cea-count">@cea.MsgCount msg</span>
                             <a href="@BrowseUrl(cea.SenderId)" class="msg-cea-browse" title="Browse messages">⇒ browse</a>

@@ -232,7 +232,10 @@ public class SenderRepository : ISenderRepository
         }
 
         if (!string.IsNullOrWhiteSpace(ratingFilter))
-            q = q.Where(s => s.RatingName == ratingFilter);
+        {
+            var filters = ratingFilter.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            q = q.Where(s => filters.Contains(s.RatingName));
+        }
 
         return q;
     }

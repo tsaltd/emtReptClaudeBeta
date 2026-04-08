@@ -28,7 +28,7 @@ public class Sender
     public int MsgCount { get; set; } = 0;
 
     [Column("rating_id")]
-    public int RatingId { get; set; } = 3; // Default ORANGE
+    public int RatingId { get; set; } = 5; // Default STEEL
 
     [Column("created_at")]
     public string CreatedAt { get; set; } = string.Empty;

@@ -54,20 +54,21 @@
             <span class="text-muted small">@fs – @ls</span>
         }
         <span class="ms-auto">
-            <select id="rating-select" class="form-select form-select-sm" style="min-width:130px"
-                    data-sender-id="@Model.SenderId">
-                @foreach (var r in Model.AvailableRatings)
-                {
-                    if (r.RatingId == Model.RatingId)
+            <div class="rating-picker" data-mode="row" data-sender-id="@Model.SenderId">
+                <button type="button" class="rating-picker-btn has-color"
+                        style="background:@Model.ColorCode" title="@Model.RatingName"></button>
+                <div class="rating-picker-panel">
+                    @foreach (var r in Model.AvailableRatings)
                     {
-                        <option value="@r.RatingId" selected>@r.RatingName</option>
+                        <div class="rating-swatch @(r.RatingId == Model.RatingId ? "active" : "")"
+                             style="background:@r.ColorCode"
+                             data-rating-id="@r.RatingId"
+                             data-rating-name="@r.RatingName"
+                             data-color="@r.ColorCode"
+                             title="@r.RatingName"></div>
                     }
-                    else
-                    {
-                        <option value="@r.RatingId">@r.RatingName</option>
-                    }
-                }
-            </select>
+                </div>
+            </div>
         </span>
     </div>
 </div>
@@ -159,15 +160,24 @@ else
     var toast = new bootstrap.Toast(document.getElementById('rating-toast'), { delay: 2000 });
     var token = $('input[name="__RequestVerificationToken"]').val();
 
-    $('#rating-select').on('change', function () {
-        var senderId = $(this).data('sender-id');
-        var ratingId = parseInt($(this).val());
+    $(document).on('click', '.rating-picker[data-mode="row"] .rating-swatch', function (e) {
+        e.stopPropagation();
+        var ratingId   = $(this).data('rating-id');
+        var ratingName = $(this).data('rating-name');
+        var color      = $(this).data('color');
+        var $picker    = $(this).closest('.rating-picker');
+        var senderId   = $picker.data('sender-id');
+        $picker.find('.rating-swatch').removeClass('active');
+        $(this).addClass('active');
+        $picker.find('.rating-picker-btn').css('background', color).attr('title', ratingName);
+        $picker.find('.rating-picker-panel').removeClass('open');
+
         $.ajax({
             url:         '/Sender/UpdateRating',
             method:      'POST',
             contentType: 'application/json',
             headers:     { 'RequestVerificationToken': token },
-            data:        JSON.stringify({ senderId: senderId, ratingId: ratingId }),
+            data:        JSON.stringify({ senderId: parseInt(senderId), ratingId: parseInt(ratingId) }),
             success: function (res) {
                 if (res.success) {
                     $('#toast-msg').text('Rating saved: ' + res.ratingName);

@@ -59,6 +59,55 @@
     .table-card .table tbody td.text-muted { color: #444 !important; }
     .table-card .table thead th { color: #333 !important; }
     .text-muted.small, small.text-muted { color: #555 !important; }
+
+    /* ── Rating row picker (row cells) ───────────────────────────── */
+    .rating-picker { position: relative; display: inline-block; }
+    .rating-picker-btn {
+        width: 18px; height: 18px;
+        border: 2px solid rgba(0,0,0,.2); border-radius: 50%;
+        cursor: pointer; background: #e9ecef; padding: 0;
+        transition: transform .1s, border-color .1s;
+    }
+    .rating-picker-btn:hover { transform: scale(1.2); border-color: rgba(0,0,0,.5); }
+    .rating-picker-btn.has-color { border-color: rgba(0,0,0,.3); }
+    .rating-picker-panel {
+        display: none; position: absolute;
+        top: calc(100% + 4px); left: 0; z-index: 1050;
+        background: #fff; border: 1px solid #ced4da;
+        border-radius: 4px; padding: 5px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.18);
+        flex-direction: row; gap: 5px; align-items: center;
+    }
+    .rating-picker-panel.open { display: flex; }
+    .rating-swatch {
+        width: 24px; height: 24px; border-radius: 3px;
+        cursor: pointer; border: 2px solid rgba(0,0,0,.15);
+        flex-shrink: 0; transition: transform .1s, border-color .1s;
+    }
+    .rating-swatch:hover { border-color: rgba(0,0,0,.55); transform: scale(1.15); }
+    .rating-swatch.active { border-color: #000; }
+
+    /* ── Search bar rating filter ────────────────────────────────── */
+    .filter-rating-btn {
+        border-radius: 999px;
+        font-size: .72rem;
+        padding: .15rem .55rem;
+        border: 2px solid rgba(0,0,0,.2);
+        cursor: pointer;
+        font-weight: 600;
+        transition: all .1s;
+        opacity: .75;
+    }
+    .filter-rating-btn:hover  { opacity: 1; border-color: rgba(0,0,0,.5); }
+    .filter-rating-btn.chosen { opacity: 1; border-color: #000; border-width: 3px; }
+    .filter-rating-dot {
+        width: 20px; height: 20px; border-radius: 50%;
+        border: 2px solid rgba(0,0,0,.2);
+        cursor: pointer; transition: all .1s; opacity: .75;
+        flex-shrink: 0;
+    }
+    .filter-rating-dot:hover  { opacity: 1; border-color: rgba(0,0,0,.5); transform: scale(1.15); }
+    .filter-rating-dot.chosen { opacity: 1; border-color: #000; border-width: 3px; }
 </style>
 }
 
@@ -71,18 +120,21 @@
                 <input name="searchTerm" type="text" class="form-control form-control-sm"
                        placeholder="Email or display name…" value="@Model.SearchTerm" />
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <label class="form-label small fw-semibold text-muted mb-1">Rating</label>
-                <select name="ratingFilter" class="form-select form-select-sm">
-                    <option value="">All Ratings</option>
+                <input type="hidden" name="ratingFilter" id="filter-rating-input" value="@Model.RatingFilter" />
+                @{ var activeFilters = (Model.RatingFilter ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet(); }
+                <div class="d-flex gap-1 flex-wrap align-items-center">
+                    <button type="button" class="filter-rating-btn @(activeFilters.Count == 0 ? "chosen" : "")"
+                            style="background:#6c757d;color:#fff" data-value="">All</button>
                     @foreach (var r in Model.AvailableRatings)
                     {
-                        if (Model.RatingFilter == r.RatingName)
-                        { <option value="@r.RatingName" selected>@r.RatingName</option> }
-                        else
-                        { <option value="@r.RatingName">@r.RatingName</option> }
+                        <button type="button" class="filter-rating-dot @(activeFilters.Contains(r.RatingName) ? "chosen" : "")"
+                                style="background:@r.ColorCode"
+                                data-value="@r.RatingName"
+                                title="@r.RatingName"></button>
                     }
-                </select>
+                </div>
             </div>
             <div class="col-auto">
                 <button type="submit" class="btn btn-primary btn-sm">Search</button>
@@ -101,9 +153,10 @@
     @foreach (var r in Model.AvailableRatings)
     {
         <button class="bulk-rating-btn"
-                style="background:@r.RatingName"
+                style="background:@r.ColorCode"
                 data-rating-id="@r.RatingId"
-                data-rating-name="@r.RatingName">@r.RatingName</button>
+                data-rating-name="@r.RatingName"
+                data-color="@r.ColorCode">@r.RatingName</button>
     }
     <button id="btn-bulk-apply" class="btn btn-primary btn-sm" disabled>Apply</button>
     <button id="btn-deselect">clear selection</button>
@@ -154,16 +207,31 @@
                     <td class="text-muted">@s.DisplayFirstSeen</td>
                     <td class="text-muted">@s.DisplayLastSeen</td>
                     <td class="rating-cell" onclick="event.stopPropagation()">
-                        <select class="form-select form-select-sm rating-select"
-                                data-sender-id="@s.SenderId">
-                            @foreach (var r in Model.AvailableRatings)
-                            {
-                                if (r.RatingId == s.RatingId)
-                                { <option value="@r.RatingId" selected>@r.RatingName</option> }
-                                else
-                                { <option value="@r.RatingId">@r.RatingName</option> }
-                            }
-                        </select>
+                        <div class="rating-picker" data-mode="row">
+                            <button type="button" class="rating-picker-btn has-color"
+                                    style="background:@s.ColorCode"
+                                    title="@s.RatingName"></button>
+                            <div class="rating-picker-panel">
+                                @foreach (var r in Model.AvailableRatings)
+                                {
+                                    <div class="rating-swatch @(r.RatingId == s.RatingId ? "active" : "")"
+                                         style="background:@r.ColorCode"
+                                         data-rating-id="@r.RatingId"
+                                         data-rating-name="@r.RatingName"
+                                         data-color="@r.ColorCode"
+                                         title="@r.RatingName"></div>
+                                }
+                            </div>
+                            <select class="rating-select d-none" data-sender-id="@s.SenderId">
+                                @foreach (var r in Model.AvailableRatings)
+                                {
+                                    if (r.RatingId == s.RatingId)
+                                    { <option value="@r.RatingId" selected>@r.RatingName</option> }
+                                    else
+                                    { <option value="@r.RatingId">@r.RatingName</option> }
+                                }
+                            </select>
+                        </div>
                     </td>
                 </tr>
             }
@@ -218,6 +286,59 @@
 
 @section Scripts {
 <script>
+// ── Rating color picker ───────────────────────────────────────────
+(function () {
+    // Open / close panel
+    $(document).on('click', '.rating-picker-btn', function (e) {
+        e.stopPropagation();
+        var $panel = $(this).closest('.rating-picker').find('.rating-picker-panel');
+        var wasOpen = $panel.hasClass('open');
+        $('.rating-picker-panel').removeClass('open');
+        if (!wasOpen) $panel.addClass('open');
+    });
+
+    $(document).on('click', function () { $('.rating-picker-panel').removeClass('open'); });
+
+    // Search bar rating filter — multi-select toggle
+    $(document).on('click', '.filter-rating-btn, .filter-rating-dot', function (e) {
+        e.stopPropagation();
+        var $all = $('.filter-rating-btn[data-value=""]');
+        var val  = $(this).data('value') || '';
+
+        if (val === '') {
+            // All — clear all selections
+            $('.filter-rating-dot').removeClass('chosen');
+            $all.addClass('chosen');
+            $('#filter-rating-input').val('');
+        } else {
+            // Toggle this dot
+            $(this).toggleClass('chosen');
+            $all.removeClass('chosen');
+            // Collect all active
+            var selected = $('.filter-rating-dot.chosen').map(function () {
+                return $(this).data('value');
+            }).get();
+            if (selected.length === 0) $all.addClass('chosen');
+            $('#filter-rating-input').val(selected.join(','));
+        }
+        $(this).closest('form').submit();
+    });
+
+    // Row swatch click — sync hidden select and fire existing AJAX
+    $(document).on('click', '.rating-picker[data-mode="row"] .rating-swatch', function (e) {
+        e.stopPropagation();
+        var ratingId   = $(this).data('rating-id');
+        var ratingName = $(this).data('rating-name');
+        var color      = $(this).data('color');
+        var $picker    = $(this).closest('.rating-picker');
+        $picker.find('.rating-swatch').removeClass('active');
+        $(this).addClass('active');
+        $picker.find('.rating-picker-btn').css('background', color).attr('title', ratingName);
+        $picker.find('.rating-picker-panel').removeClass('open');
+        $picker.find('.rating-select').val(ratingId).trigger('change');
+    });
+})();
+
 (function () {
     var toast     = new bootstrap.Toast(document.getElementById('rating-toast'), { delay: 2500 });
     var token     = $('input[name="__RequestVerificationToken"]').val();
@@ -309,6 +430,11 @@
                 ids.forEach(function (sid) {
                     var $row = $('tr[data-sender-id="' + sid + '"]');
                     $row.find('.rating-select').val(chosenId);
+                    var $picker = $row.find('.rating-picker[data-mode="row"]');
+                    var $swatch = $picker.find('.rating-swatch[data-rating-id="' + chosenId + '"]');
+                    $picker.find('.rating-swatch').removeClass('active');
+                    $swatch.addClass('active');
+                    $picker.find('.rating-picker-btn').css('background', $swatch.data('color')).attr('title', $swatch.data('rating-name'));
                     $row.addClass('table-success');
                     setTimeout(() => $row.removeClass('table-success'), 1500);
                 });

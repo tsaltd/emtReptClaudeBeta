@@ -1,0 +1,296 @@
+@startuml EmailTracker Domain Model
+title EmailTracker — Domain Class Diagram\n(ASP.NET Core 8 / SQLite / EF Core)
+
+' ─────────────────────────────────────────────────────
+'  STYLE
+' ─────────────────────────────────────────────────────
+skinparam classBackgroundColor #F8F9FA
+skinparam classBorderColor     #ADB5BD
+skinparam classHeaderBackgroundColor #343A40
+skinparam classHeaderFontColor #FFFFFF
+skinparam arrowColor           #495057
+skinparam shadowing false
+skinparam linetype ortho
+
+' ─────────────────────────────────────────────────────
+'  DOMAIN ENTITIES  (mapped to SQLite tables)
+' ─────────────────────────────────────────────────────
+
+class Rating <<entity>> {
+    + RatingId   : int  <<PK>>
+    + RatingName : string  <<unique>>
+    + ColorCode  : string?
+    + SortOrder  : int  <<unique>>
+    --
+    Senders : ICollection<Sender>
+}
+
+class Sender <<entity>> {
+    + SenderId     : int  <<PK>>
+    + EmailAddress : string  <<unique, CEA>>
+    + DisplayName  : string?
+    + FirstSeen    : string?
+    + LastSeen     : string?
+    + MsgCount     : int
+    + RatingId     : int  <<FK>>
+    + CreatedAt    : string?
+    + UpdatedAt    : string?
+    --
+    Rating   : Rating
+    Messages : ICollection<Message>
+}
+
+class Message <<entity>> {
+    + MessageId      : int  <<PK>>
+    + RunId          : int?  <<FK>>
+    + SenderId       : int?  <<FK>>
+    + GmailMessageId : string?  <<cross-ref key>>
+    + ThreadId       : string?
+    + InternalDate   : string?
+    + HeaderDate     : string?
+    + Subject        : string?
+    + Snippet        : string?
+    + FromRaw        : string?
+    + ToRaw          : string?
+    + CreatedAt      : string?
+    --
+    Run    : Run
+    Sender : Sender
+}
+
+class Run <<entity>> {
+    + RunId       : int  <<PK>>
+    + WindowStart : string?
+    + WindowEnd   : string?
+    + StartedAt   : string?
+    + SourceLabel : string?
+    --
+    Messages : ICollection<Message>
+}
+
+class PriorityMessage <<entity>> {
+    + RecordId        : int  <<PK>>
+    + GmailMessageId  : string  <<unique, cross-ref key>>
+    --
+    ' Links to Message via GmailMessageId (not FK — intentional)
+    ' Preserved across ingest batch resets
+}
+
+' ─────────────────────────────────────────────────────
+'  READ-ONLY VIEWS  (keyless EF entities)
+' ─────────────────────────────────────────────────────
+
+class VSenderWithRating <<view>> {
+    + SenderId     : int
+    + EmailAddress : string
+    + DisplayName  : string?
+    + FirstSeen    : string?
+    + LastSeen     : string?
+    + MsgCount     : int
+    + RatingId     : int?
+    + RatingName   : string?
+    + ColorCode    : string?
+    + CreatedAt    : string?
+    + UpdatedAt    : string?
+}
+
+class VMessageWithSender <<view>> {
+    + MessageId      : int
+    + RunId          : int?
+    + SenderId       : int?
+    + EmailAddress   : string?
+    + RatingName     : string?
+    + GmailMessageId : string?
+    + ThreadId       : string?
+    + InternalDate   : string?
+    + HeaderDate     : string?
+    + Subject        : string?
+    + Snippet        : string?
+    + FromRaw        : string?
+    + ToRaw          : string?
+    + CreatedAt      : string?
+}
+
+' ─────────────────────────────────────────────────────
+'  REPOSITORY INTERFACES
+' ─────────────────────────────────────────────────────
+
+interface IRunRepository {
+    + GetAllAsync(search)
+    + GetByIdAsync(id)
+    + CreateAsync(run)
+    + UpdateAsync(run)
+    + DeleteAsync(id)
+    + GetMessageCountAsync(runId)
+    + GetSenderCountAsync(runId)
+}
+
+interface IMessageRepository {
+    + SearchAsync(filters)
+    + CountAsync(filters)
+    + GetByIdAsync(id)
+    + CreateAsync(msg)
+    + DeleteAsync(id)
+    + GetFromRawBreakdownAsync(senderId)
+    + GetByGmailIdsAsync(ids)
+}
+
+interface ISenderRepository {
+    + SearchAsync(filters)
+    + CountAsync(filters)
+    + GetByIdAsync(id)
+    + GetByEmailAsync(email)
+    + CreateAsync(sender)
+    + UpdateAsync(sender)
+    + UpdateRatingBulkAsync(ids, ratingId)
+    + GetTopSendersForRunAsync(runId, n)
+}
+
+interface IRatingRepository {
+    + GetAllAsync()
+    + GetByIdAsync(id)
+}
+
+interface IPriorityMessageRepository {
+    + AddAsync(gmailMessageId)
+    + RemoveAsync(gmailMessageId)
+    + IsTrackedAsync(gmailMessageId)
+    + GetAllIdsAsync()
+}
+
+' ─────────────────────────────────────────────────────
+'  SERVICE INTERFACES
+' ─────────────────────────────────────────────────────
+
+interface IRunService {
+    + GetRunListAsync(searchTerm)
+    + GetRunDetailAsync(runId)
+}
+
+interface IMessageService {
+    + SearchAsync(filters)
+    + GetForSenderAsync(senderId, limit)
+    + GetByGmailIdsAsync(gmailIds)
+}
+
+interface ISenderService {
+    + SearchAsync(filters)
+    + GetDetailAsync(senderId)
+    + GetSummaryAsync(senderId, page, pageSize, sortAsc)
+    + GetBrowseAsync(index)
+    + UpdateRatingAsync(senderId, ratingId)
+    + UpdateRatingBulkAsync(senderIds, ratingId)
+    + ExtractCanonicalEmail(fromRaw)
+}
+
+interface IRatingService {
+    + GetAllAsync()
+}
+
+interface IPriorityMessageService {
+    + ToggleAsync(gmailMessageId)
+    + GetAllIdsAsync()
+}
+
+interface IGmailIngestService {
+    + RunAsync(days, progressCallback)
+}
+
+' ─────────────────────────────────────────────────────
+'  GMAIL INGEST PIPELINE  (service boundary)
+' ─────────────────────────────────────────────────────
+
+class GmailIngestService <<service>> {
+    - RunPythonScriptAsync(days) : string
+    - ResolveEmail(record) : string
+    + RunAsync(days, progress) : IngestResultViewModel
+    --
+    Pipeline:
+    1. Delete batch (preserve starred outside window)
+    2. Execute Python harvester script
+    3. Deserialize GmailPayload JSON
+    4. Create Run record
+    5. Upsert Senders (preserve ratings)
+    6. Insert Messages (skip duplicates)
+}
+
+class GmailPayload <<dto>> {
+    + Meta     : GmailMeta
+    + Messages : GmailHeaderRecord[]
+}
+
+class GmailHeaderRecord <<dto>> {
+    + GmailMessageId : string
+    + ThreadId       : string
+    + InternalDate   : string
+    + HeaderDate     : string
+    + FromRaw        : string
+    + CanonicalEmail : string
+    + DisplayName    : string
+    + ToRaw          : string
+    + Subject        : string
+    + Snippet        : string
+}
+
+class IngestJobStore <<singleton>> {
+    - Jobs : ConcurrentDictionary<string, IngestJob>
+    + GetOrCreate(jobId) : IngestJob
+    + TryGet(jobId) : IngestJob?
+}
+
+class IngestJob <<model>> {
+    + JobId      : string
+    + Status     : string  ' queued|running|complete|failed
+    + Step       : string?
+    + Error      : string?
+    + Result     : IngestResultViewModel?
+    + StartedAt  : DateTime
+}
+
+' ─────────────────────────────────────────────────────
+'  RELATIONSHIPS — Entities
+' ─────────────────────────────────────────────────────
+
+Rating      "1" o-- "0..*" Sender        : RatingId (FK)
+Sender      "1" o-- "0..*" Message       : SenderId (FK)
+Run         "1" o-- "0..*" Message       : RunId (FK)
+
+' Cross-reference (not FK — soft link via GmailMessageId)
+Message     ..>  PriorityMessage : GmailMessageId\n(soft ref)
+
+' Views project from entities
+VSenderWithRating   ..>  Sender  : projects
+VSenderWithRating   ..>  Rating  : projects
+VMessageWithSender  ..>  Message : projects
+VMessageWithSender  ..>  Sender  : projects
+
+' ─────────────────────────────────────────────────────
+'  RELATIONSHIPS — Repositories → Entities
+' ─────────────────────────────────────────────────────
+
+IRunRepository             ..>  Run             : manages
+IMessageRepository         ..>  Message         : manages
+ISenderRepository          ..>  Sender          : manages
+IRatingRepository          ..>  Rating          : manages
+IPriorityMessageRepository ..>  PriorityMessage : manages
+
+' ─────────────────────────────────────────────────────
+'  RELATIONSHIPS — Services → Repositories
+' ─────────────────────────────────────────────────────
+
+IRunService     ..>  IRunRepository     : uses
+IMessageService ..>  IMessageRepository : uses
+ISenderService  ..>  ISenderRepository  : uses
+ISenderService  ..>  IRatingRepository  : uses
+IRatingService  ..>  IRatingRepository  : uses
+IPriorityMessageService ..>  IPriorityMessageRepository : uses
+IGmailIngestService     ..>  GmailIngestService         : <<realizes>>
+GmailIngestService      ..>  ISenderRepository          : upserts
+GmailIngestService      ..>  IMessageRepository         : inserts
+GmailIngestService      ..>  IRunRepository             : creates
+GmailIngestService      ..>  IPriorityMessageRepository : reads (preserve)
+GmailIngestService      ..>  GmailPayload               : deserializes
+GmailPayload            "1" *-- "0..*" GmailHeaderRecord
+IngestJobStore          "1" *-- "0..*" IngestJob
+
+@enduml

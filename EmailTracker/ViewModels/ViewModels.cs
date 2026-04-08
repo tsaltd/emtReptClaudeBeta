@@ -94,6 +94,7 @@ public class SenderSummaryViewModel
     public string? DisplayName   { get; set; }
     public int     MsgCount      { get; set; }
     public string  RatingName    { get; set; } = string.Empty;
+    public string? ColorCode     { get; set; }
     public int     RatingId      { get; set; }
     public string? FirstSeen     { get; set; }
     public string? LastSeen      { get; set; }
@@ -155,6 +156,7 @@ public class SenderSummaryPageViewModel
     public int     MsgCount     { get; set; }
     public int     RatingId     { get; set; }
     public string  RatingName   { get; set; } = string.Empty;
+    public string? ColorCode    { get; set; }
     public string? FirstSeen    { get; set; }
     public string? LastSeen     { get; set; }
 
@@ -222,6 +224,8 @@ public class CeaGroupViewModel
     public int     SenderId     { get; set; }
     public string  EmailAddress { get; set; } = string.Empty;
     public string  RatingName   { get; set; } = string.Empty;
+    public int     RatingId     { get; set; }
+    public string? ColorCode    { get; set; }
     public int     MsgCount     { get; set; }
     public List<FromRawGroupViewModel> FromRawGroups { get; set; } = [];
 }
@@ -254,6 +258,7 @@ public class MessageBrowseViewModel
     public int     SenderId     { get; set; }
     public string  EmailAddress { get; set; } = string.Empty;
     public string  RatingName   { get; set; } = string.Empty;
+    public string? ColorCode    { get; set; }
 
     // ── Message list (flat, paginated) ────────────────────────────
     public IEnumerable<MessageRowViewModel> Messages    { get; set; } = [];
@@ -305,9 +310,10 @@ public class IngestResultViewModel
 
 public class RatingOptionViewModel
 {
-    public int    RatingId   { get; set; }
-    public string RatingName { get; set; } = string.Empty;
-    public int    SortOrder  { get; set; }
+    public int     RatingId   { get; set; }
+    public string  RatingName { get; set; } = string.Empty;
+    public int     SortOrder  { get; set; }
+    public string? ColorCode  { get; set; }
 }
 
 // ════════════════════════════════════════════════════════════════

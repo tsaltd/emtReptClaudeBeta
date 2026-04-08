@@ -24,7 +24,23 @@
                     <td><code class="text-primary small">@s.EmailAddress</code></td>
                     <td class="text-muted small">@(s.DisplayName ?? "—")</td>
                     <td class="text-center"><span class="badge bg-primary rounded-pill">@s.MsgCount</span></td>
-                    <td><span class="badge bg-secondary badge-rating">@s.RatingName</span></td>
+                    <td onclick="event.stopPropagation()">
+                        <div class="rating-picker" data-mode="row" data-sender-id="@s.SenderId">
+                            <button type="button" class="rating-picker-btn has-color"
+                                    style="background:@s.ColorCode" title="@s.RatingName"></button>
+                            <div class="rating-picker-panel">
+                                @foreach (var r in Model.AvailableRatings)
+                                {
+                                    <div class="rating-swatch @(r.RatingId == s.RatingId ? "active" : "")"
+                                         style="background:@r.ColorCode"
+                                         data-rating-id="@r.RatingId"
+                                         data-rating-name="@r.RatingName"
+                                         data-color="@r.ColorCode"
+                                         title="@r.RatingName"></div>
+                                }
+                            </div>
+                        </div>
+                    </td>
                     <td class="text-muted small">@s.DisplayFirstSeen</td>
                     <td class="text-muted small">@s.DisplayLastSeen</td>
                     <td>

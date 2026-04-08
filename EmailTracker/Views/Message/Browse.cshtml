@@ -321,7 +321,7 @@
             </span>
             @if (!string.IsNullOrEmpty(Model.RatingName))
             {
-                <span class="rating-pill" style="background:@Model.RatingName">@Model.RatingName</span>
+                <span class="rating-pill" style="background:@Model.ColorCode">@Model.RatingName</span>
             }
         </div>
 
@@ -333,9 +333,10 @@
             {
                 var isActive = r.RatingName == Model.RatingName;
                 <button class="hk-btn @(isActive ? "active" : "")"
-                        style="background:@r.RatingName"
+                        style="background:@r.ColorCode"
                         data-rating-id="@r.RatingId"
                         data-rating-name="@r.RatingName"
+                        data-color="@r.ColorCode"
                         data-hk-index="@hkIdx">
                     <kbd>@hkIdx</kbd> @r.RatingName
                 </button>

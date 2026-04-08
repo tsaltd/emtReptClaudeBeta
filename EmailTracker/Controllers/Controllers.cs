@@ -197,6 +197,7 @@ public class MessageController : Controller
         string sortBy, bool sortAsc, int page, int pageSize)
     {
         var priorityIds = await _priorityService.GetAllIdsAsync();
+        var ratings     = await _ratingService.GetAllAsync();
         var groups      = new List<CeaGroupViewModel>();
         int total;
 
@@ -227,11 +228,14 @@ public class MessageController : Controller
                         Messages = g.OrderByDescending(m => m.InternalDate).ToList()
                     }).ToList();
 
+                var r1 = ratings.FirstOrDefault(r => r.RatingName == first.RatingName);
                 groups.Add(new CeaGroupViewModel
                 {
                     SenderId      = first.SenderId,
                     EmailAddress  = first.EmailAddress,
                     RatingName    = first.RatingName,
+                    RatingId      = r1?.RatingId ?? 0,
+                    ColorCode     = r1?.ColorCode,
                     MsgCount      = senderGroup.Count(),
                     FromRawGroups = fromRawGroups
                 });
@@ -291,13 +295,13 @@ public class MessageController : Controller
                     SenderId      = s.SenderId,
                     EmailAddress  = s.EmailAddress,
                     RatingName    = s.RatingName,
+                    RatingId      = s.RatingId,
+                    ColorCode     = s.ColorCode,
                     MsgCount      = s.MsgCount,
                     FromRawGroups = fromRawGroups
                 });
             }
         }
-
-        var ratings = await _ratingService.GetAllAsync();
 
         return new MessageGroupedViewModel
         {
@@ -353,6 +357,7 @@ public class MessageController : Controller
             SenderId         = senderId,
             EmailAddress     = cur?.EmailAddress ?? string.Empty,
             RatingName       = cur?.RatingName   ?? string.Empty,
+            ColorCode        = cur?.ColorCode,
             SenderSearch     = senderSearch,
             SenderSortAsc    = senderSortAsc,
             SenderPage       = page,

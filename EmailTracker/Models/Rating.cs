@@ -18,6 +18,9 @@ public class Rating
     [Column("sort_order")]
     public int SortOrder { get; set; }
 
+    [Column("color_code")]
+    public string? ColorCode { get; set; }
+
     // Navigation
     public ICollection<Sender> Senders { get; set; } = new List<Sender>();
 }

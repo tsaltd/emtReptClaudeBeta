@@ -17,6 +17,7 @@ public class VSenderWithRating
     [Column("msg_count")]        public int MsgCount { get; set; }
     [Column("rating_id")]        public int RatingId { get; set; }
     [Column("rating_name")]      public string RatingName { get; set; } = string.Empty;
+    [Column("color_code")]       public string? ColorCode { get; set; }
     [Column("created_at")]       public string CreatedAt { get; set; } = string.Empty;
     [Column("updated_at")]       public string UpdatedAt { get; set; } = string.Empty;
 }
@@ -32,6 +33,7 @@ public class VMessageWithSender
     [Column("sender_id")]        public int SenderId { get; set; }
     [Column("email_address")]    public string EmailAddress { get; set; } = string.Empty;
     [Column("rating_name")]      public string RatingName { get; set; } = string.Empty;
+    [Column("color_code")]       public string? ColorCode { get; set; }
     [Column("gmail_message_id")] public string? GmailMessageId { get; set; }
     [Column("thread_id")]        public string? ThreadId { get; set; }
     [Column("internal_date")]    public string? InternalDate { get; set; }

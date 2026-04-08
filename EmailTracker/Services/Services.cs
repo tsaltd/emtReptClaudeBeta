@@ -125,6 +125,7 @@ public class RunService : IRunService
                 DisplayName  = s.DisplayName,
                 MsgCount     = s.MsgCount,
                 RatingName   = s.RatingName,
+                ColorCode    = s.ColorCode,
                 RatingId     = s.RatingId
             })
         };
@@ -175,7 +176,8 @@ public class MessageService : IMessageService
         {
             RatingId   = r.RatingId,
             RatingName = r.RatingName,
-            SortOrder  = r.SortOrder
+            SortOrder  = r.SortOrder,
+            ColorCode  = r.ColorCode
         });
 
         return filters;
@@ -249,6 +251,7 @@ public class SenderService : ISenderService
             DisplayName  = s.DisplayName,
             MsgCount     = s.MsgCount,
             RatingName   = s.RatingName,
+            ColorCode    = s.ColorCode,
             RatingId     = s.RatingId,
             FirstSeen    = s.FirstSeen,
             LastSeen     = s.LastSeen
@@ -259,7 +262,8 @@ public class SenderService : ISenderService
         {
             RatingId   = r.RatingId,
             RatingName = r.RatingName,
-            SortOrder  = r.SortOrder
+            SortOrder  = r.SortOrder,
+            ColorCode  = r.ColorCode
         });
 
         return filters;
@@ -362,6 +366,7 @@ public class SenderService : ISenderService
             MsgCount         = sender.MsgCount,
             RatingId         = sender.RatingId,
             RatingName       = sender.Rating?.RatingName ?? string.Empty,
+            ColorCode        = sender.Rating?.ColorCode,
             FirstSeen        = sender.FirstSeen,
             LastSeen         = sender.LastSeen,
             FromRawGroups    = pagedGroups,
@@ -373,7 +378,8 @@ public class SenderService : ISenderService
             {
                 RatingId   = r.RatingId,
                 RatingName = r.RatingName,
-                SortOrder  = r.SortOrder
+                SortOrder  = r.SortOrder,
+                ColorCode  = r.ColorCode
             })
         };
     }
@@ -501,7 +507,8 @@ public class RatingService : IRatingService
         {
             RatingId   = r.RatingId,
             RatingName = r.RatingName,
-            SortOrder  = r.SortOrder
+            SortOrder  = r.SortOrder,
+            ColorCode  = r.ColorCode
         });
     }
 }

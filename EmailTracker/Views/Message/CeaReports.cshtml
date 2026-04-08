@@ -1,5 +1,6 @@
 @model MessageGroupedViewModel
 @{ ViewData["Title"] = "CEA Reports"; }
+@Html.AntiForgeryToken()
 
 @section Styles {
 <style>
@@ -153,6 +154,36 @@
     .btn-priority:hover  { color: #ffc107; }
     .btn-priority.active { color: #ffc107; }
 
+    /* ── Rating dots on sender header ───────────────────────────── */
+    .cea-rating-dots { display: inline-flex; gap: 5px; align-items: center; margin-left: .6rem; vertical-align: middle; }
+    .cea-dot {
+        width: 13px; height: 13px; border-radius: 50%;
+        cursor: pointer; border: 2px solid rgba(0,0,0,.15);
+        display: inline-block; transition: all .1s;
+        flex-shrink: 0;
+    }
+    .cea-dot:hover  { border-color: rgba(0,0,0,.5); transform: scale(1.2); }
+    .cea-dot.active { border-color: #000; width: 18px; height: 18px; }
+
+    /* ── Rating filter swatches ──────────────────────────────────── */
+    .cea-filter-swatches { display: inline-flex; gap: 5px; align-items: center; }
+    .cea-filter-dot {
+        width: 18px; height: 18px; border-radius: 50%;
+        cursor: pointer; border: 2px solid rgba(0,0,0,.15);
+        display: inline-block; transition: transform .1s, border-color .1s;
+    }
+    .cea-filter-dot:hover  { border-color: rgba(0,0,0,.5); transform: scale(1.15); }
+    .cea-filter-dot.active { border-color: #000; }
+    .cea-filter-all {
+        width: 18px; height: 18px; border-radius: 50%;
+        background: linear-gradient(135deg, #adb5bd 50%, #e9ecef 50%);
+        cursor: pointer; border: 2px solid rgba(0,0,0,.15);
+        display: inline-block; font-size: .45rem; font-weight: 700;
+        display: inline-flex; align-items: center; justify-content: center;
+        color: #495057; transition: border-color .1s;
+    }
+    .cea-filter-all.active { border-color: #000; }
+
     /* ── Empty ───────────────────────────────────────────────────── */
     .grp-empty td {
         text-align: center;
@@ -201,13 +232,18 @@
 
     <div>
         <div class="f-label">Rating</div>
-        <select name="ratingFilter" class="form-select" style="width:140px">
-            <option value="">All ratings</option>
+        <input type="hidden" name="ratingFilter" id="cea-rating-input" value="@Model.RatingFilter" />
+        <div class="cea-filter-swatches">
+            <span class="cea-filter-all @(string.IsNullOrEmpty(Model.RatingFilter) ? "active" : "")"
+                  data-value="" title="All ratings">All</span>
             @foreach (var r in Model.AvailableRatings)
             {
-                <option value="@r.RatingName" selected="@(Model.RatingFilter == r.RatingName)">@r.RatingName</option>
+                <span class="cea-filter-dot @(Model.RatingFilter == r.RatingName ? "active" : "")"
+                      style="background:@r.ColorCode"
+                      data-value="@r.RatingName"
+                      title="@r.RatingName"></span>
             }
-        </select>
+        </div>
     </div>
 
     <div>
@@ -275,11 +311,21 @@
 
             @foreach (var cea in Model.CeaGroups)
             {
-                <!-- Sender header row (no pill) -->
-                <tr class="msg-sender-hdr">
+                <!-- Sender header row -->
+                <tr class="msg-sender-hdr" data-sender-id="@cea.SenderId">
                     <td colspan="3">
                         <a href="/Sender/Detail/@cea.SenderId" style="color:inherit;text-decoration:none">@cea.EmailAddress</a>
                         <span class="sender-count">@cea.MsgCount msg</span>
+                        <span class="cea-rating-dots">
+                            @foreach (var r in Model.AvailableRatings)
+                            {
+                                <span class="cea-dot @(r.RatingId == cea.RatingId ? "active" : "")"
+                                      style="background:@r.ColorCode"
+                                      data-sender-id="@cea.SenderId"
+                                      data-rating-id="@r.RatingId"
+                                      title="@r.RatingName"></span>
+                            }
+                        </span>
                     </td>
                 </tr>
 
@@ -399,5 +445,41 @@ document.getElementById('btn-priority-toggle').addEventListener('click', functio
     h.value = h.value === 'true' ? 'false' : 'true';
     this.closest('form').submit();
 });
+
+// Rating filter swatches
+document.addEventListener('click', function (e) {
+    const dot = e.target.closest('.cea-filter-dot, .cea-filter-all');
+    if (!dot) return;
+    const val = dot.dataset.value || '';
+    document.querySelectorAll('.cea-filter-dot, .cea-filter-all').forEach(d => d.classList.remove('active'));
+    dot.classList.add('active');
+    document.getElementById('cea-rating-input').value = val;
+    dot.closest('form').submit();
+});
+
+// Sender rating dots — AJAX save
+(function () {
+    var token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+    document.addEventListener('click', function (e) {
+        const dot = e.target.closest('.cea-dot');
+        if (!dot) return;
+        e.stopPropagation();
+        const senderId = parseInt(dot.dataset.senderId);
+        const ratingId = parseInt(dot.dataset.ratingId);
+        fetch('/Sender/UpdateRating', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+            body: JSON.stringify({ senderId, ratingId })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const row = dot.closest('tr');
+                row.querySelectorAll('.cea-dot').forEach(d => d.classList.remove('active'));
+                dot.classList.add('active');
+            }
+        });
+    });
+})();
 </script>
 }
