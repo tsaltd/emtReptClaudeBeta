@@ -12,13 +12,11 @@
         {
             <tr class="msg-empty"><td colspan="2">No messages match your filters.</td></tr>
         }
-        @foreach (var senderGroup in Model.Messages.GroupBy(m => new { m.SenderId, m.EmailAddress, m.RatingName }))
+        @foreach (var senderGroup in Model.Messages.GroupBy(m => new { m.SenderId, m.EmailAddress, m.RatingName, m.ColorCode }))
         {
-            var ratingColor = senderGroup.Key.RatingName.ToLower();
-
             <tr class="msg-cea">
                 <td colspan="2">
-                    <span class="msg-cea-pill" style="background-color:@ratingColor">
+                    <span class="msg-cea-pill" style="background-color:@(senderGroup.Key.ColorCode ?? "#adb5bd")">
                         <a href="/Sender/Detail/@senderGroup.Key.SenderId" class="msg-cea-link">@senderGroup.Key.EmailAddress</a>
                         <span class="msg-cea-count">@senderGroup.Count() msg</span>
                     </span>

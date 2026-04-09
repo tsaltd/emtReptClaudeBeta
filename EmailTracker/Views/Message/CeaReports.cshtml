@@ -209,20 +209,24 @@
 @{
     string RatingParam()   => string.IsNullOrEmpty(Model.RatingFilter) ? "" : $"&ratingFilter={Uri.EscapeDataString(Model.RatingFilter)}";
     string PriorityParam() => Model.PriorityOnly ? "&priorityOnly=true" : "";
+    string DateParam()     => (string.IsNullOrEmpty(Model.DateFrom) ? "" : $"&dateFrom={Uri.EscapeDataString(Model.DateFrom)}")
+                            + (string.IsNullOrEmpty(Model.DateTo)   ? "" : $"&dateTo={Uri.EscapeDataString(Model.DateTo)}");
 
     string SortUrl(string by, bool asc) =>
-        $"/Message/CeaReports?sortBy={by}&sortAsc={asc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{PriorityParam()}&page=1&pageSize={Model.PageSize}";
+        $"/Message/CeaReports?sortBy={by}&sortAsc={asc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{PriorityParam()}{DateParam()}&page=1&pageSize={Model.PageSize}";
 
     string PageUrl(int p) =>
-        $"/Message/CeaReports?sortBy={Model.SortBy}&sortAsc={Model.SortAsc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{PriorityParam()}&page={p}&pageSize={Model.PageSize}";
+        $"/Message/CeaReports?sortBy={Model.SortBy}&sortAsc={Model.SortAsc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{PriorityParam()}{DateParam()}&page={p}&pageSize={Model.PageSize}";
 }
 
 <!-- Filter / sort bar -->
 <form method="get" action="/Message/CeaReports" class="grp-bar">
     <input type="hidden" name="sortBy"       value="@Model.SortBy" />
     <input type="hidden" name="sortAsc"      value="@Model.SortAsc.ToString().ToLower()" />
-    <input type="hidden" name="pageSize"     value="@Model.PageSize" />
+    <input type="hidden" name="pageSize" id="h-page-size" value="@Model.PageSize" />
     <input type="hidden" name="priorityOnly" id="h-priority" value="@Model.PriorityOnly.ToString().ToLower()" />
+    <input type="hidden" name="dateFrom"     id="h-date-from" value="@Model.DateFrom" />
+    <input type="hidden" name="dateTo"       id="h-date-to"   value="@Model.DateTo" />
 
     <div>
         <div class="f-label">Search CEA</div>
@@ -264,6 +268,27 @@
             <a href="@SortUrl("email", false)"
                class="btn btn-outline-secondary sort-btn @(Model.SortBy == "email" && !Model.SortAsc ? "active" : "")">Z → A</a>
         </div>
+    </div>
+
+    <div>
+        <div class="f-label">Date From</div>
+        <input type="date" id="ui-date-from" class="form-control" style="width:145px"
+               value="@Model.DateFrom" />
+    </div>
+    <div>
+        <div class="f-label">Date To</div>
+        <input type="date" id="ui-date-to" class="form-control" style="width:145px"
+               value="@Model.DateTo" />
+    </div>
+
+    <div>
+        <div class="f-label">Per Page</div>
+        <select id="sel-page-size" class="form-select" style="width:80px;border-radius:0;font-size:.8rem;height:30px;padding:.2rem .4rem">
+            @foreach (var n in new[] { 10, 25, 50, 100 })
+            {
+                <option value="@n" @(Model.PageSize == n ? "selected" : "")>@n</option>
+            }
+        </select>
     </div>
 
     <div class="d-flex align-items-end" style="margin-top:auto">
@@ -314,6 +339,12 @@
                 <!-- Sender header row -->
                 <tr class="msg-sender-hdr" data-sender-id="@cea.SenderId">
                     <td colspan="3">
+                        <button type="button"
+                                class="status-btn @(cea.StatusName == "RATED" ? "rated" : "")"
+                                data-sender-id="@cea.SenderId"
+                                data-next-status-id="@(cea.StatusName == "RATED" ? 1 : 2)"
+                                title="@cea.StatusName"
+                                style="margin-right:.4rem;vertical-align:middle">@(cea.StatusName == "RATED" ? "✓" : "○")</button>
                         <a href="/Sender/Detail/@cea.SenderId" style="color:inherit;text-decoration:none">@cea.EmailAddress</a>
                         <span class="sender-count">@cea.MsgCount msg</span>
                         <span class="cea-rating-dots">
@@ -443,6 +474,22 @@ document.addEventListener('click', function (e) {
 document.getElementById('btn-priority-toggle').addEventListener('click', function () {
     var h = document.getElementById('h-priority');
     h.value = h.value === 'true' ? 'false' : 'true';
+    this.closest('form').submit();
+});
+
+// Page size dropdown
+document.getElementById('sel-page-size').addEventListener('change', function () {
+    document.getElementById('h-page-size').value = this.value;
+    this.closest('form').submit();
+});
+
+// Date inputs — sync to hidden fields and submit
+document.getElementById('ui-date-from').addEventListener('change', function () {
+    document.getElementById('h-date-from').value = this.value;
+    this.closest('form').submit();
+});
+document.getElementById('ui-date-to').addEventListener('change', function () {
+    document.getElementById('h-date-to').value = this.value;
     this.closest('form').submit();
 });
 

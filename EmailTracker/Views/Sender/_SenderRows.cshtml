@@ -25,14 +25,14 @@
                     <td><code class="text-primary small">@s.EmailAddress</code></td>
                     <td class="text-muted small">@(s.DisplayName ?? "—")</td>
                     <td class="text-center"><span class="badge bg-primary rounded-pill">@s.MsgCount</span></td>
-                    <td onclick="event.stopPropagation()">
+                    <td>
                         <button type="button"
                                 class="status-btn @(s.StatusName == "RATED" ? "rated" : "")"
                                 data-sender-id="@s.SenderId"
                                 data-next-status-id="@(s.StatusName == "RATED" ? 1 : 2)"
                                 title="@s.StatusName">@(s.StatusName == "RATED" ? "✓" : "○")</button>
                     </td>
-                    <td onclick="event.stopPropagation()">
+                    <td>
                         <div class="rating-picker" data-mode="row" data-sender-id="@s.SenderId">
                             <button type="button" class="rating-picker-btn has-color"
                                     style="background:@s.ColorCode" title="@s.RatingName"></button>

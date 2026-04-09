@@ -344,6 +344,17 @@
             }
         </div>
 
+        <!-- Date filter bar -->
+        <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .75rem;background:#f8f9fa;border-bottom:1px solid #dee2e6;font-size:.78rem;">
+            <span style="color:#adb5bd;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-size:.65rem;">Date</span>
+            <input id="msg-date-from" type="date" class="form-control form-control-sm" style="width:145px"
+                   value="@Model.MsgDateFrom" placeholder="From" />
+            <span style="color:#adb5bd">–</span>
+            <input id="msg-date-to" type="date" class="form-control form-control-sm" style="width:145px"
+                   value="@Model.MsgDateTo" placeholder="To" />
+            <button id="msg-date-clear" class="btn btn-outline-secondary btn-sm" style="font-size:.72rem;padding:.15rem .5rem">Clear</button>
+        </div>
+
         <!-- Message table -->
         <table class="browse-msg-table">
             <thead>
@@ -391,7 +402,7 @@
                         {
                             <li class="page-item @(p == Model.MsgPage ? "active" : "")">
                                 <a class="page-link"
-                                   href="@Url.Action("Browse", "Message", new { senderId = Model.SenderId, senderSearch = Model.SenderSearch, senderSortAsc = Model.SenderSortAsc, msgPage = p })">@p</a>
+                                   href="@Url.Action("Browse", "Message", new { senderId = Model.SenderId, senderSearch = Model.SenderSearch, senderSortAsc = Model.SenderSortAsc, msgPage = p, msgDateFrom = Model.MsgDateFrom, msgDateTo = Model.MsgDateTo })">@p</a>
                             </li>
                         }
                     </ul>
@@ -407,6 +418,27 @@
 <script>
     const senderId = @Model.SenderId;
     let spTimer;
+
+    // Date filter — navigate on change or clear
+    function applyDateFilter() {
+        const from = $('#msg-date-from').val();
+        const to   = $('#msg-date-to').val();
+        const params = {
+            senderId:      senderId,
+            senderSearch:  '@Html.Raw(Model.SenderSearch ?? "")',
+            senderSortAsc: @Model.SenderSortAsc.ToString().ToLower(),
+            msgPage:       1
+        };
+        if (from) params.msgDateFrom = from;
+        if (to)   params.msgDateTo   = to;
+        window.location.href = '/Message/Browse?' + $.param(params);
+    }
+    $('#msg-date-from, #msg-date-to').on('change', applyDateFilter);
+    $('#msg-date-clear').on('click', function() {
+        $('#msg-date-from').val('');
+        $('#msg-date-to').val('');
+        applyDateFilter();
+    });
 
     function getSenderPanelUrl(page) {
         return '/Message/BrowsePanel?' + $.param({

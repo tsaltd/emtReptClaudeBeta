@@ -1,0 +1,245 @@
+@model FilterBarViewModel
+@{
+    var selectedList = (Model.SelectedRatings ?? "")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries)
+        .ToHashSet();
+}
+
+<style>
+    .fb-wrap {
+        background: #fff; border: 1px solid #ced4da;
+        padding: .65rem 1rem; display: flex; align-items: flex-end;
+        gap: .75rem; flex-wrap: wrap;
+    }
+    .fb-group { display: flex; flex-direction: column; gap: .2rem; }
+    .fb-label {
+        font-size: .65rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: .6px; color: #868e96;
+    }
+    .fb-date {
+        border-radius: 0; border-color: #ced4da; font-size: .8rem;
+        height: 30px; padding: .2rem .45rem; width: 140px;
+    }
+    .fb-date:focus { outline: none; border-color: #0d6efd; box-shadow: none; }
+
+    /* Status buttons */
+    .fb-status-group { display: flex; gap: 0; }
+    .fb-status-btn {
+        height: 30px; padding: 0 .7rem; font-size: .75rem;
+        border: 1px solid #ced4da; background: #fff; color: #495057;
+        cursor: pointer; white-space: nowrap; transition: all .12s;
+    }
+    .fb-status-btn:first-child { border-radius: 0; }
+    .fb-status-btn:not(:first-child) { border-left: none; }
+    .fb-status-btn:hover { background: #f0f4ff; }
+    .fb-status-btn.fb-active-all  { background: #495057; color: #fff; border-color: #495057; }
+    .fb-status-btn.fb-active-open { background: #adb5bd; color: #fff; border-color: #adb5bd; }
+    .fb-status-btn.fb-active-rated{ background: #28a745; color: #fff; border-color: #28a745; }
+
+    /* Rating swatches */
+    .fb-rating-group { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+    .fb-rating-all {
+        height: 26px; padding: 0 .55rem; font-size: .7rem; font-weight: 700;
+        border: 2px solid #ced4da; border-radius: 3px; background: #f8f9fa;
+        color: #495057; cursor: pointer; transition: all .1s;
+    }
+    .fb-rating-all.fb-active { border-color: #495057; background: #495057; color: #fff; }
+    .fb-swatch {
+        width: 26px; height: 26px; border-radius: 3px;
+        border: 2px solid rgba(0,0,0,.15); cursor: pointer;
+        transition: transform .1s, border-color .1s, box-shadow .1s;
+        flex-shrink: 0;
+    }
+    .fb-swatch:hover { border-color: rgba(0,0,0,.5); transform: scale(1.15); }
+    .fb-swatch.fb-active {
+        border-color: #000; box-shadow: 0 0 0 2px rgba(0,0,0,.25);
+        transform: scale(1.15);
+    }
+
+    /* Priority */
+    .fb-priority-btn {
+        height: 30px; padding: 0 .7rem; font-size: .75rem;
+        border: 1px solid #ced4da; background: #fff; color: #adb5bd;
+        cursor: pointer; border-radius: 0; transition: all .12s;
+        white-space: nowrap;
+    }
+    .fb-priority-btn:hover  { border-color: #ffc107; color: #ffc107; }
+    .fb-priority-btn.fb-active { background: #ffc107; color: #fff; border-color: #ffc107; }
+
+    /* Clear */
+    .fb-clear-btn {
+        height: 30px; padding: 0 .75rem; font-size: .75rem;
+        border: 1px solid #ced4da; background: #fff; color: #6c757d;
+        cursor: pointer; border-radius: 0; transition: all .12s;
+    }
+    .fb-clear-btn:hover { background: #f8f9fa; }
+</style>
+
+<div class="fb-wrap" id="filter-bar">
+
+    <!-- Date From -->
+    <div class="fb-group">
+        <span class="fb-label">Date From</span>
+        <input id="fb-date-from" type="date" class="form-control fb-date"
+               value="@Model.DateFrom" />
+    </div>
+
+    <!-- Date To -->
+    <div class="fb-group">
+        <span class="fb-label">Date To</span>
+        <input id="fb-date-to" type="date" class="form-control fb-date"
+               value="@Model.DateTo" />
+    </div>
+
+    @if (Model.ShowStatus)
+    {
+        <!-- Status -->
+        <div class="fb-group">
+            <span class="fb-label">Status</span>
+            <div class="fb-status-group">
+                <button type="button" class="fb-status-btn @(string.IsNullOrEmpty(Model.StatusFilter) ? "fb-active-all" : "")"
+                        data-value="">All</button>
+                <button type="button" class="fb-status-btn @(Model.StatusFilter == "OPEN"  ? "fb-active-open"  : "")"
+                        data-value="OPEN">○ Open</button>
+                <button type="button" class="fb-status-btn @(Model.StatusFilter == "RATED" ? "fb-active-rated" : "")"
+                        data-value="RATED">✓ Rated</button>
+            </div>
+        </div>
+    }
+
+    <!-- Rating (multi-select) -->
+    <div class="fb-group">
+        <span class="fb-label">Rating</span>
+        <div class="fb-rating-group">
+            <button type="button" id="fb-rating-all"
+                    class="fb-rating-all @(!selectedList.Any() ? "fb-active" : "")">All</button>
+            @foreach (var r in Model.AvailableRatings)
+            {
+                <span class="fb-swatch @(selectedList.Contains(r.RatingName) ? "fb-active" : "")"
+                      style="background:@r.ColorCode"
+                      data-rating="@r.RatingName"
+                      title="@r.RatingName"></span>
+            }
+        </div>
+    </div>
+
+    @if (Model.ShowPriority)
+    {
+        <!-- Priority -->
+        <div class="fb-group">
+            <span class="fb-label">Priority</span>
+            <button type="button" id="fb-priority"
+                    class="fb-priority-btn @(Model.PriorityOnly ? "fb-active" : "")">★ Priority</button>
+        </div>
+    }
+
+    <!-- Clear -->
+    <div class="fb-group">
+        <span class="fb-label">&nbsp;</span>
+        <button type="button" id="fb-clear" class="fb-clear-btn">✕ Clear</button>
+    </div>
+
+</div>
+
+<script>
+(function () {
+    // ── State ────────────────────────────────────────────────────
+    var selectedRatings = @Html.Raw(
+        "[" + string.Join(",", selectedList.Select(r => $"\"{r}\"")) + "]");
+
+    // ── Rating swatches ──────────────────────────────────────────
+    function updateRatingAll() {
+        var allBtn = document.getElementById('fb-rating-all');
+        if (allBtn) allBtn.classList.toggle('fb-active', selectedRatings.length === 0);
+    }
+
+    document.querySelectorAll('.fb-swatch').forEach(function (sw) {
+        sw.addEventListener('click', function () {
+            var name = this.dataset.rating;
+            var idx  = selectedRatings.indexOf(name);
+            if (idx >= 0) {
+                selectedRatings.splice(idx, 1);
+                this.classList.remove('fb-active');
+            } else {
+                selectedRatings.push(name);
+                this.classList.add('fb-active');
+            }
+            updateRatingAll();
+            FilterBar._emit();
+        });
+    });
+
+    var ratingAllBtn = document.getElementById('fb-rating-all');
+    if (ratingAllBtn) {
+        ratingAllBtn.addEventListener('click', function () {
+            selectedRatings = [];
+            document.querySelectorAll('.fb-swatch').forEach(function (sw) {
+                sw.classList.remove('fb-active');
+            });
+            updateRatingAll();
+            FilterBar._emit();
+        });
+    }
+
+    // ── Status buttons ───────────────────────────────────────────
+    document.querySelectorAll('.fb-status-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.fb-status-btn').forEach(function (b) {
+                b.classList.remove('fb-active-all', 'fb-active-open', 'fb-active-rated');
+            });
+            var val = this.dataset.value;
+            if      (val === '')      this.classList.add('fb-active-all');
+            else if (val === 'OPEN')  this.classList.add('fb-active-open');
+            else if (val === 'RATED') this.classList.add('fb-active-rated');
+            FilterBar._emit();
+        });
+    });
+
+    // ── Priority ─────────────────────────────────────────────────
+    var priorityBtn = document.getElementById('fb-priority');
+    if (priorityBtn) {
+        priorityBtn.addEventListener('click', function () {
+            this.classList.toggle('fb-active');
+            FilterBar._emit();
+        });
+    }
+
+    // ── Date inputs ──────────────────────────────────────────────
+    document.getElementById('fb-date-from').addEventListener('change', function () { FilterBar._emit(); });
+    document.getElementById('fb-date-to').addEventListener('change',   function () { FilterBar._emit(); });
+
+    // ── Clear ────────────────────────────────────────────────────
+    document.getElementById('fb-clear').addEventListener('click', function () {
+        document.getElementById('fb-date-from').value = '';
+        document.getElementById('fb-date-to').value   = '';
+        selectedRatings = [];
+        document.querySelectorAll('.fb-swatch').forEach(function (sw) { sw.classList.remove('fb-active'); });
+        updateRatingAll();
+        document.querySelectorAll('.fb-status-btn').forEach(function (b) {
+            b.classList.remove('fb-active-all', 'fb-active-open', 'fb-active-rated');
+        });
+        var allStatus = document.querySelector('.fb-status-btn[data-value=""]');
+        if (allStatus) allStatus.classList.add('fb-active-all');
+        if (priorityBtn) priorityBtn.classList.remove('fb-active');
+        FilterBar._emit();
+    });
+
+    // ── Public API ───────────────────────────────────────────────
+    window.FilterBar = {
+        getValues: function () {
+            var activeStatus = document.querySelector('.fb-status-btn.fb-active-open, .fb-status-btn.fb-active-rated');
+            return {
+                dateFrom:     document.getElementById('fb-date-from').value,
+                dateTo:       document.getElementById('fb-date-to').value,
+                statusFilter: activeStatus ? activeStatus.dataset.value : '',
+                ratingFilter: selectedRatings.join(','),
+                priorityOnly: priorityBtn ? priorityBtn.classList.contains('fb-active') : false
+            };
+        },
+        onChange: null,
+        _emit: function () {
+            if (typeof this.onChange === 'function') this.onChange(this.getValues());
+        }
+    };
+})();
+</script>

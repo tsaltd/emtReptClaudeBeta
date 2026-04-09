@@ -144,7 +144,10 @@ public class MessageRepository : IMessageRepository
             q = q.Where(m => m.InternalDate != null && string.Compare(m.InternalDate, dateTo) <= 0);
 
         if (!string.IsNullOrWhiteSpace(ratingFilter))
-            q = q.Where(m => m.RatingName == ratingFilter);
+        {
+            var filters = ratingFilter.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            q = q.Where(m => filters.Contains(m.RatingName));
+        }
 
         return q;
     }

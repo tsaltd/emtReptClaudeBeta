@@ -136,7 +136,9 @@ public class MessageController : Controller
         string? senderSearch,
         bool    senderSortAsc = false,
         int     senderPage    = 0,
-        int     msgPage       = 1)
+        int     msgPage       = 1,
+        string? msgDateFrom   = null,
+        string? msgDateTo     = null)
     {
         var vm = await BuildSenderNav(senderId, senderSearch, senderSortAsc, senderPage);
 
@@ -144,12 +146,16 @@ public class MessageController : Controller
         {
             SenderId = senderId,
             Page     = msgPage,
-            PageSize = 50
+            PageSize = 50,
+            DateFrom = msgDateFrom,
+            DateTo   = msgDateTo
         });
 
-        vm.Messages = msgResult.Messages;
-        vm.MsgTotal = msgResult.TotalCount;
-        vm.MsgPage  = msgPage;
+        vm.Messages    = msgResult.Messages;
+        vm.MsgTotal    = msgResult.TotalCount;
+        vm.MsgPage     = msgPage;
+        vm.MsgDateFrom = msgDateFrom;
+        vm.MsgDateTo   = msgDateTo;
 
         // Fallback: get sender info from messages if not in filtered list
         if (vm.EmailAddress == string.Empty)
@@ -177,24 +183,27 @@ public class MessageController : Controller
     // GET /Message/Grouped — CEA-paged tree view
     public async Task<IActionResult> Grouped(
         string? searchTerm, string? ratingFilter, bool priorityOnly = false,
-        string sortBy = "count", bool sortAsc = false, int page = 1, int pageSize = 10)
+        string sortBy = "count", bool sortAsc = false, int page = 1, int pageSize = 10,
+        string? dateFrom = null, string? dateTo = null)
     {
-        var vm = await BuildGroupedViewModel(searchTerm, ratingFilter, priorityOnly, sortBy, sortAsc, page, pageSize);
+        var vm = await BuildGroupedViewModel(searchTerm, ratingFilter, priorityOnly, sortBy, sortAsc, page, pageSize, dateFrom, dateTo);
         return View(vm);
     }
 
     // GET /Message/CeaReports — same data, report layout (no pills)
     public async Task<IActionResult> CeaReports(
         string? searchTerm, string? ratingFilter, bool priorityOnly = false,
-        string sortBy = "count", bool sortAsc = false, int page = 1, int pageSize = 10)
+        string sortBy = "count", bool sortAsc = false, int page = 1, int pageSize = 25,
+        string? dateFrom = null, string? dateTo = null)
     {
-        var vm = await BuildGroupedViewModel(searchTerm, ratingFilter, priorityOnly, sortBy, sortAsc, page, pageSize);
+        var vm = await BuildGroupedViewModel(searchTerm, ratingFilter, priorityOnly, sortBy, sortAsc, page, pageSize, dateFrom, dateTo);
         return View(vm);
     }
 
     private async Task<MessageGroupedViewModel> BuildGroupedViewModel(
         string? searchTerm, string? ratingFilter, bool priorityOnly,
-        string sortBy, bool sortAsc, int page, int pageSize)
+        string sortBy, bool sortAsc, int page, int pageSize,
+        string? dateFrom = null, string? dateTo = null)
     {
         var priorityIds = await _priorityService.GetAllIdsAsync();
         var ratings     = await _ratingService.GetAllAsync();
@@ -206,7 +215,9 @@ public class MessageController : Controller
             var allPriorityMsgs = (await _messageService.GetByGmailIdsAsync(priorityIds))
                 .Where(m =>
                     (string.IsNullOrEmpty(searchTerm)   || m.EmailAddress.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
-                    (string.IsNullOrEmpty(ratingFilter) || m.RatingName == ratingFilter))
+                    (string.IsNullOrEmpty(ratingFilter) || m.RatingName == ratingFilter) &&
+                    (string.IsNullOrEmpty(dateFrom)     || string.Compare(m.InternalDate, dateFrom) >= 0) &&
+                    (string.IsNullOrEmpty(dateTo)       || string.Compare(m.InternalDate, dateTo)   <= 0))
                 .ToList();
 
             var bySender = allPriorityMsgs
@@ -243,9 +254,14 @@ public class MessageController : Controller
         }
         else
         {
-            List<SenderSummaryViewModel> pageSenders;
+            bool hasDateFilter = !string.IsNullOrEmpty(dateFrom) || !string.IsNullOrEmpty(dateTo);
 
-            if (sortBy == "email")
+            // When date filtering is active, load all senders and paginate after
+            // in-memory message filtering so page count is accurate.
+            // Without date filter, use DB-level pagination for efficiency.
+            List<SenderSummaryViewModel> allSenders;
+
+            if (sortBy == "email" || hasDateFilter)
             {
                 var all = await _senderService.SearchAsync(new SenderSearchViewModel
                 {
@@ -255,11 +271,11 @@ public class MessageController : Controller
                     Page         = 1,
                     PageSize     = int.MaxValue
                 });
-                var sorted = (sortAsc
-                    ? all.Senders.OrderBy(s => s.EmailAddress)
-                    : all.Senders.OrderByDescending(s => s.EmailAddress)).ToList();
-                total       = sorted.Count;
-                pageSenders = sorted.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+                allSenders = sortBy == "email"
+                    ? (sortAsc
+                        ? all.Senders.OrderBy(s => s.EmailAddress)
+                        : all.Senders.OrderByDescending(s => s.EmailAddress)).ToList()
+                    : all.Senders.ToList();
             }
             else
             {
@@ -271,15 +287,23 @@ public class MessageController : Controller
                     Page         = page,
                     PageSize     = pageSize
                 });
-                total       = result.TotalCount;
-                pageSenders = result.Senders.ToList();
+                total      = result.TotalCount;
+                allSenders = result.Senders.ToList();
             }
 
-            foreach (var s in pageSenders)
+            // Build all groups (with date filtering), then paginate in memory
+            var allGroups = new List<CeaGroupViewModel>();
+            foreach (var s in allSenders)
             {
-                var msgs = (await _messageService.GetForSenderAsync(s.SenderId, 200)).ToList();
+                var msgs = (await _messageService.GetForSenderAsync(s.SenderId, 200))
+                    .Where(m =>
+                        (string.IsNullOrEmpty(dateFrom) || string.Compare(m.InternalDate, dateFrom) >= 0) &&
+                        (string.IsNullOrEmpty(dateTo)   || string.Compare(m.InternalDate, dateTo)   <= 0))
+                    .ToList();
                 foreach (var m in msgs.Where(m => m.GmailMessageId != null))
                     m.IsPriority = priorityIds.Contains(m.GmailMessageId!);
+
+                if (msgs.Count == 0) continue;
 
                 var fromRawGroups = msgs
                     .GroupBy(m => m.FromRaw ?? "(no from header)")
@@ -290,7 +314,7 @@ public class MessageController : Controller
                         Messages = g.OrderByDescending(m => m.InternalDate).ToList()
                     }).ToList();
 
-                groups.Add(new CeaGroupViewModel
+                allGroups.Add(new CeaGroupViewModel
                 {
                     SenderId      = s.SenderId,
                     EmailAddress  = s.EmailAddress,
@@ -298,8 +322,20 @@ public class MessageController : Controller
                     RatingId      = s.RatingId,
                     ColorCode     = s.ColorCode,
                     MsgCount      = s.MsgCount,
+                    StatusId      = s.StatusId,
+                    StatusName    = s.StatusName,
                     FromRawGroups = fromRawGroups
                 });
+            }
+
+            if (sortBy == "email" || hasDateFilter)
+            {
+                total  = allGroups.Count;
+                groups = allGroups.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            }
+            else
+            {
+                groups = allGroups;
             }
         }
 
@@ -307,6 +343,8 @@ public class MessageController : Controller
         {
             SearchTerm       = searchTerm,
             RatingFilter     = ratingFilter,
+            DateFrom         = dateFrom,
+            DateTo           = dateTo,
             PriorityOnly     = priorityOnly,
             SortBy           = sortBy,
             SortAsc          = sortAsc,
@@ -503,15 +541,18 @@ public class GmailIngestController : Controller
     private readonly IngestJobStore                    _jobStore;
     private readonly IServiceScopeFactory              _scopeFactory;
     private readonly ILogger<GmailIngestController>   _logger;
+    private readonly IConfiguration                    _config;
 
     public GmailIngestController(
         IngestJobStore jobStore,
         IServiceScopeFactory scopeFactory,
-        ILogger<GmailIngestController> logger)
+        ILogger<GmailIngestController> logger,
+        IConfiguration config)
     {
         _jobStore     = jobStore;
         _scopeFactory = scopeFactory;
         _logger       = logger;
+        _config       = config;
     }
 
     // GET /GmailIngest
@@ -523,6 +564,23 @@ public class GmailIngestController : Controller
     public IActionResult Start([FromForm] int days = 14)
     {
         days = Math.Clamp(days, 1, 14);
+
+        // Backup DB before ingest
+        var connStr = _config.GetConnectionString("DefaultConnection") ?? "";
+        var dbPath  = connStr.Replace("Data Source=", "", StringComparison.OrdinalIgnoreCase).Trim();
+        if (System.IO.File.Exists(dbPath))
+        {
+            var ts         = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            var backupPath = System.IO.Path.Combine(
+                System.IO.Path.GetDirectoryName(dbPath)!,
+                $"{System.IO.Path.GetFileNameWithoutExtension(dbPath)}_backup_{ts}.db");
+            System.IO.File.Copy(dbPath, backupPath, overwrite: false);
+            _logger.LogInformation("GmailIngest: DB backed up to {BackupPath}", backupPath);
+        }
+        else
+        {
+            _logger.LogWarning("GmailIngest: DB file not found at {DbPath} — skipping backup", dbPath);
+        }
 
         var job = _jobStore.Create();
         job.Status = "running";

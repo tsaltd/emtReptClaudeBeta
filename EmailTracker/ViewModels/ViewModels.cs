@@ -1,6 +1,22 @@
 namespace EmailTracker.ViewModels;
 
 // ════════════════════════════════════════════════════════════════
+//  SHARED FILTER BAR ViewModel
+// ════════════════════════════════════════════════════════════════
+
+public class FilterBarViewModel
+{
+    public IEnumerable<RatingOptionViewModel> AvailableRatings { get; set; } = [];
+    public string? SelectedRatings { get; set; }   // comma-separated rating names
+    public string? DateFrom        { get; set; }
+    public string? DateTo          { get; set; }
+    public string? StatusFilter    { get; set; }   // "" | "OPEN" | "RATED"
+    public bool    PriorityOnly    { get; set; }
+    public bool    ShowStatus      { get; set; } = true;
+    public bool    ShowPriority    { get; set; } = true;
+}
+
+// ════════════════════════════════════════════════════════════════
 //  RUN ViewModels
 // ════════════════════════════════════════════════════════════════
 
@@ -51,6 +67,7 @@ public class MessageRowViewModel
     public int     SenderId       { get; set; }
     public string  EmailAddress   { get; set; } = string.Empty;
     public string  RatingName     { get; set; } = string.Empty;
+    public string? ColorCode      { get; set; }
     public string? Subject        { get; set; }
     public string? Snippet        { get; set; }
     public string? InternalDate   { get; set; }
@@ -230,6 +247,8 @@ public class CeaGroupViewModel
     public int     RatingId     { get; set; }
     public string? ColorCode    { get; set; }
     public int     MsgCount     { get; set; }
+    public int     StatusId     { get; set; } = 1;
+    public string  StatusName   { get; set; } = "OPEN";
     public List<FromRawGroupViewModel> FromRawGroups { get; set; } = [];
 }
 
@@ -237,6 +256,8 @@ public class MessageGroupedViewModel
 {
     public string? SearchTerm   { get; set; }
     public string? RatingFilter { get; set; }
+    public string? DateFrom     { get; set; }
+    public string? DateTo       { get; set; }
     public bool    PriorityOnly { get; set; }
     public string  SortBy       { get; set; } = "count";   // "count" | "email"
     public bool    SortAsc      { get; set; }
@@ -267,10 +288,12 @@ public class MessageBrowseViewModel
 
     // ── Message list (flat, paginated) ────────────────────────────
     public IEnumerable<MessageRowViewModel> Messages    { get; set; } = [];
-    public int  MsgTotal    { get; set; }
-    public int  MsgPage     { get; set; } = 1;
-    public int  MsgPageSize { get; set; } = 50;
-    public int  MsgTotalPages => (int)Math.Ceiling((double)MsgTotal / MsgPageSize);
+    public int     MsgTotal    { get; set; }
+    public int     MsgPage     { get; set; } = 1;
+    public int     MsgPageSize { get; set; } = 50;
+    public int     MsgTotalPages => (int)Math.Ceiling((double)MsgTotal / MsgPageSize);
+    public string? MsgDateFrom { get; set; }
+    public string? MsgDateTo   { get; set; }
 
     // ── Sender panel state ────────────────────────────────────────
     public string? SenderSearch   { get; set; }
