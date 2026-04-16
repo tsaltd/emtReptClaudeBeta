@@ -137,9 +137,21 @@
                 </div>
             </div>
             <div class="col-auto">
-                <button type="submit" class="btn btn-primary btn-sm">Search</button>
+                <label class="form-label small fw-semibold text-muted mb-1">Status</label>
+                <input type="hidden" name="statusFilter" id="qr-status-input" value="@Model.StatusFilter" />
+                <div class="d-flex gap-0">
+                    <button type="button" class="btn btn-sm qr-status-btn @(string.IsNullOrEmpty(Model.StatusFilter) ? "btn-secondary" : "btn-outline-secondary")"
+                            style="border-radius:0" data-value="">All</button>
+                    <button type="button" class="btn btn-sm qr-status-btn @(Model.StatusFilter == "OPEN"  ? "" : "btn-outline-secondary")"
+                            style="border-radius:0;border-left:none;@(Model.StatusFilter == "OPEN" ? "background:#adb5bd;color:#fff;border-color:#adb5bd" : "")"
+                            data-value="OPEN">○ Open</button>
+                    <button type="button" class="btn btn-sm qr-status-btn @(Model.StatusFilter == "RATED" ? "" : "btn-outline-secondary")"
+                            style="border-radius:0;border-left:none;@(Model.StatusFilter == "RATED" ? "background:#28a745;color:#fff;border-color:#28a745" : "")"
+                            data-value="RATED">✓ Rated</button>
+                </div>
             </div>
-            <div class="col-auto">
+            <div class="col-auto d-flex align-items-end">
+                <button type="submit" class="btn btn-primary btn-sm me-1">Search</button>
                 <a asp-controller="Sender" asp-action="QuickRate" class="btn btn-outline-secondary btn-sm">Clear</a>
             </div>
         </div>
@@ -176,12 +188,12 @@
                     <input type="checkbox" id="cb-all" class="row-cb" title="Select all on page" />
                 </th>
                 <th>Canonical Email</th>
+                <th style="width:36px"></th>
+                <th class="rating-cell">Rating</th>
                 <th>Display Name</th>
                 <th class="text-center" style="width:70px">Msgs</th>
                 <th style="width:100px">First Seen</th>
                 <th style="width:100px">Last Seen</th>
-                <th style="width:36px"></th>
-                <th class="rating-cell">Rating</th>
             </tr>
         </thead>
         <tbody>
@@ -201,20 +213,14 @@
                             <code class="text-primary">@s.EmailAddress</code>
                         </a>
                     </td>
-                    <td class="text-muted">@(s.DisplayName ?? "—")</td>
-                    <td class="text-center">
-                        <span class="badge bg-primary rounded-pill">@s.MsgCount</span>
-                    </td>
-                    <td class="text-muted">@s.DisplayFirstSeen</td>
-                    <td class="text-muted">@s.DisplayLastSeen</td>
-                    <td onclick="event.stopPropagation()">
+                    <td>
                         <button type="button"
                                 class="status-btn @(s.StatusName == "RATED" ? "rated" : "")"
                                 data-sender-id="@s.SenderId"
                                 data-next-status-id="@(s.StatusName == "RATED" ? 1 : 2)"
                                 title="@s.StatusName">@(s.StatusName == "RATED" ? "✓" : "○")</button>
                     </td>
-                    <td class="rating-cell" onclick="event.stopPropagation()">
+                    <td class="rating-cell">
                         <div class="rating-picker" data-mode="row">
                             <button type="button" class="rating-picker-btn has-color"
                                     style="background:@s.ColorCode"
@@ -241,6 +247,12 @@
                             </select>
                         </div>
                     </td>
+                    <td class="text-muted">@(s.DisplayName ?? "—")</td>
+                    <td class="text-center">
+                        <span class="badge bg-primary rounded-pill">@s.MsgCount</span>
+                    </td>
+                    <td class="text-muted">@s.DisplayFirstSeen</td>
+                    <td class="text-muted">@s.DisplayLastSeen</td>
                 </tr>
             }
         </tbody>
@@ -253,6 +265,7 @@
             <a asp-controller="Sender" asp-action="QuickRate"
                asp-route-searchTerm="@Model.SearchTerm"
                asp-route-ratingFilter="@Model.RatingFilter"
+               asp-route-statusFilter="@Model.StatusFilter"
                asp-route-page="@(Model.Page - 1)"
                class="btn btn-sm btn-outline-secondary @(Model.Page <= 1 ? "disabled" : "")">
                 <i class="fas fa-chevron-left me-1"></i> Prev
@@ -266,6 +279,7 @@
                                asp-controller="Sender" asp-action="QuickRate"
                                asp-route-searchTerm="@Model.SearchTerm"
                                asp-route-ratingFilter="@Model.RatingFilter"
+                               asp-route-statusFilter="@Model.StatusFilter"
                                asp-route-page="@p">@p</a>
                         </li>
                     }
@@ -294,6 +308,14 @@
 
 @section Scripts {
 <script>
+// ── Status filter buttons ─────────────────────────────────────────
+document.querySelectorAll('.qr-status-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        document.getElementById('qr-status-input').value = this.dataset.value;
+        this.closest('form').submit();
+    });
+});
+
 // ── Rating color picker ───────────────────────────────────────────
 (function () {
     // Open / close panel

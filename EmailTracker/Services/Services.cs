@@ -152,12 +152,12 @@ public class MessageService : IMessageService
     {
         var messages = await _msgRepo.SearchAsync(
             filters.SenderId, filters.SearchTerm,
-            filters.DateFrom, filters.DateTo, filters.RatingFilter,
+            filters.DateFrom, filters.DateTo, filters.RatingFilter, filters.StatusFilter,
             filters.Page, filters.PageSize);
 
         var total = await _msgRepo.CountAsync(
             filters.SenderId, filters.SearchTerm,
-            filters.DateFrom, filters.DateTo, filters.RatingFilter);
+            filters.DateFrom, filters.DateTo, filters.RatingFilter, filters.StatusFilter);
 
         var ratings = await _ratingRepo.GetAllAsync();
 
@@ -192,7 +192,7 @@ public class MessageService : IMessageService
     public async Task<IEnumerable<MessageRowViewModel>> GetForSenderAsync(int senderId, int limit = 200)
     {
         var msgs = await _msgRepo.SearchAsync(
-            senderId, null, null, null, null, 1, limit);
+            senderId, null, null, null, null, null, 1, limit);
 
         return msgs.Select(m => new MessageRowViewModel
         {
@@ -287,7 +287,7 @@ public class SenderService : ISenderService
         if (sender == null) return null;
 
         var allMessages = await _msgRepo.SearchAsync(
-            senderId, null, null, null, null, 1, int.MaxValue);
+            senderId, null, null, null, null, null, 1, int.MaxValue);
 
         var ratings = await _ratingRepo.GetAllAsync();
 
@@ -340,7 +340,7 @@ public class SenderService : ISenderService
         if (sender == null) return null;
 
         var allMessages = await _msgRepo.SearchAsync(
-            senderId, null, null, null, null, 1, int.MaxValue);
+            senderId, null, null, null, null, null, 1, int.MaxValue);
 
         var ratings = await _ratingRepo.GetAllAsync();
 

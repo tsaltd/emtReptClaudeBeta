@@ -208,13 +208,14 @@
 @{
     // Helpers to build sort/nav URLs
     string RatingParam()   => string.IsNullOrEmpty(Model.RatingFilter) ? "" : $"&ratingFilter={Uri.EscapeDataString(Model.RatingFilter)}";
+    string StatusParam()   => string.IsNullOrEmpty(Model.StatusFilter) ? "" : $"&statusFilter={Uri.EscapeDataString(Model.StatusFilter)}";
     string PriorityParam() => Model.PriorityOnly ? "&priorityOnly=true" : "";
 
     string SortUrl(string by, bool asc) =>
-        $"/Message/Grouped?sortBy={by}&sortAsc={asc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{PriorityParam()}&page=1&pageSize={Model.PageSize}";
+        $"/Message/Grouped?sortBy={by}&sortAsc={asc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{StatusParam()}{PriorityParam()}&page=1&pageSize={Model.PageSize}";
 
     string PageUrl(int p) =>
-        $"/Message/Grouped?sortBy={Model.SortBy}&sortAsc={Model.SortAsc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{PriorityParam()}&page={p}&pageSize={Model.PageSize}";
+        $"/Message/Grouped?sortBy={Model.SortBy}&sortAsc={Model.SortAsc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{StatusParam()}{PriorityParam()}&page={p}&pageSize={Model.PageSize}";
 
     string BrowseUrl(int senderId) =>
         $"/Message/Browse?senderId={senderId}";
@@ -226,6 +227,7 @@
     <input type="hidden" name="sortAsc"      value="@Model.SortAsc.ToString().ToLower()" />
     <input type="hidden" name="pageSize"     value="@Model.PageSize" />
     <input type="hidden" name="priorityOnly" id="h-priority" value="@Model.PriorityOnly.ToString().ToLower()" />
+    <input type="hidden" name="statusFilter" id="h-status"   value="@Model.StatusFilter" />
 
     <div>
         <div class="f-label">Search CEA</div>
@@ -242,6 +244,20 @@
                 <option value="@r.RatingName" selected="@(Model.RatingFilter == r.RatingName)">@r.RatingName</option>
             }
         </select>
+    </div>
+
+    <div>
+        <div class="f-label">Status</div>
+        <div class="btn-group">
+            <button type="button" class="btn btn-outline-secondary sort-btn grp-status-btn @(string.IsNullOrEmpty(Model.StatusFilter) ? "active" : "")"
+                    data-value="">All</button>
+            <button type="button" class="btn sort-btn grp-status-btn @(Model.StatusFilter == "OPEN" ? "" : "btn-outline-secondary")"
+                    style="@(Model.StatusFilter == "OPEN" ? "background:#adb5bd;color:#fff;border-color:#adb5bd" : "")"
+                    data-value="OPEN">○ Open</button>
+            <button type="button" class="btn sort-btn grp-status-btn @(Model.StatusFilter == "RATED" ? "" : "btn-outline-secondary")"
+                    style="@(Model.StatusFilter == "RATED" ? "background:#28a745;color:#fff;border-color:#28a745" : "")"
+                    data-value="RATED">✓ Rated</button>
+        </div>
     </div>
 
     <div>
@@ -428,6 +444,14 @@ document.addEventListener('click', function (e) {
     })
     .then(r => r.json())
     .then(data => { btn.classList.toggle('active', data.isPriority); });
+});
+
+// Status filter buttons
+document.querySelectorAll('.grp-status-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        document.getElementById('h-status').value = this.dataset.value;
+        this.closest('form').submit();
+    });
 });
 
 // Priority filter toggle — flip hidden field and submit form

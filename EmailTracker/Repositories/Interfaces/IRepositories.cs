@@ -21,6 +21,7 @@ public interface IMessageRepository
         string? dateFrom,
         string? dateTo,
         string? ratingFilter,
+        string? statusFilter,
         int     page,
         int     pageSize);
 
@@ -29,7 +30,8 @@ public interface IMessageRepository
         string? searchTerm,
         string? dateFrom,
         string? dateTo,
-        string? ratingFilter);
+        string? ratingFilter,
+        string? statusFilter);
 
     Task<Message?> GetByIdAsync(int id);
     Task<Message>  CreateAsync(Message message);

@@ -77,19 +77,27 @@
 
 <div class="fb-wrap" id="filter-bar">
 
-    <!-- Date From -->
-    <div class="fb-group">
-        <span class="fb-label">Date From</span>
-        <input id="fb-date-from" type="date" class="form-control fb-date"
-               value="@Model.DateFrom" />
-    </div>
+    @if (Model.ShowDate)
+    {
+        <!-- Date From -->
+        <div class="fb-group">
+            <span class="fb-label">Date From</span>
+            <input id="fb-date-from" type="date" class="form-control fb-date"
+                   value="@Model.DateFrom" />
+        </div>
 
-    <!-- Date To -->
-    <div class="fb-group">
-        <span class="fb-label">Date To</span>
-        <input id="fb-date-to" type="date" class="form-control fb-date"
-               value="@Model.DateTo" />
-    </div>
+        <!-- Date To -->
+        <div class="fb-group">
+            <span class="fb-label">Date To</span>
+            <input id="fb-date-to" type="date" class="form-control fb-date"
+                   value="@Model.DateTo" />
+        </div>
+    }
+    else
+    {
+        <input type="hidden" id="fb-date-from" value="" />
+        <input type="hidden" id="fb-date-to"   value="" />
+    }
 
     @if (Model.ShowStatus)
     {

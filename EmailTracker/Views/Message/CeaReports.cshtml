@@ -208,15 +208,16 @@
 
 @{
     string RatingParam()   => string.IsNullOrEmpty(Model.RatingFilter) ? "" : $"&ratingFilter={Uri.EscapeDataString(Model.RatingFilter)}";
+    string StatusParam()   => string.IsNullOrEmpty(Model.StatusFilter) ? "" : $"&statusFilter={Uri.EscapeDataString(Model.StatusFilter)}";
     string PriorityParam() => Model.PriorityOnly ? "&priorityOnly=true" : "";
     string DateParam()     => (string.IsNullOrEmpty(Model.DateFrom) ? "" : $"&dateFrom={Uri.EscapeDataString(Model.DateFrom)}")
                             + (string.IsNullOrEmpty(Model.DateTo)   ? "" : $"&dateTo={Uri.EscapeDataString(Model.DateTo)}");
 
     string SortUrl(string by, bool asc) =>
-        $"/Message/CeaReports?sortBy={by}&sortAsc={asc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{PriorityParam()}{DateParam()}&page=1&pageSize={Model.PageSize}";
+        $"/Message/CeaReports?sortBy={by}&sortAsc={asc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{StatusParam()}{PriorityParam()}{DateParam()}&page=1&pageSize={Model.PageSize}";
 
     string PageUrl(int p) =>
-        $"/Message/CeaReports?sortBy={Model.SortBy}&sortAsc={Model.SortAsc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{PriorityParam()}{DateParam()}&page={p}&pageSize={Model.PageSize}";
+        $"/Message/CeaReports?sortBy={Model.SortBy}&sortAsc={Model.SortAsc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{StatusParam()}{PriorityParam()}{DateParam()}&page={p}&pageSize={Model.PageSize}";
 }
 
 <!-- Filter / sort bar -->
@@ -227,6 +228,7 @@
     <input type="hidden" name="priorityOnly" id="h-priority" value="@Model.PriorityOnly.ToString().ToLower()" />
     <input type="hidden" name="dateFrom"     id="h-date-from" value="@Model.DateFrom" />
     <input type="hidden" name="dateTo"       id="h-date-to"   value="@Model.DateTo" />
+    <input type="hidden" name="statusFilter" id="h-status"    value="@Model.StatusFilter" />
 
     <div>
         <div class="f-label">Search CEA</div>
@@ -247,6 +249,20 @@
                       data-value="@r.RatingName"
                       title="@r.RatingName"></span>
             }
+        </div>
+    </div>
+
+    <div>
+        <div class="f-label">Status</div>
+        <div class="btn-group">
+            <button type="button" class="btn sort-btn cea-status-btn @(string.IsNullOrEmpty(Model.StatusFilter) ? "active" : "")"
+                    data-value="">All</button>
+            <button type="button" class="btn sort-btn cea-status-btn @(Model.StatusFilter == "OPEN"  ? "active" : "")"
+                    style="@(Model.StatusFilter == "OPEN"  ? "background:#adb5bd;color:#fff;border-color:#adb5bd" : "")"
+                    data-value="OPEN">○ Open</button>
+            <button type="button" class="btn sort-btn cea-status-btn @(Model.StatusFilter == "RATED" ? "active" : "")"
+                    style="@(Model.StatusFilter == "RATED" ? "background:#28a745;color:#fff;border-color:#28a745" : "")"
+                    data-value="RATED">✓ Rated</button>
         </div>
     </div>
 
@@ -286,7 +302,8 @@
         <select id="sel-page-size" class="form-select" style="width:80px;border-radius:0;font-size:.8rem;height:30px;padding:.2rem .4rem">
             @foreach (var n in new[] { 10, 25, 50, 100 })
             {
-                <option value="@n" @(Model.PageSize == n ? "selected" : "")>@n</option>
+                if (Model.PageSize == n) { <option value="@n" selected>@n</option> }
+                else                     { <option value="@n">@n</option> }
             }
         </select>
     </div>
@@ -308,6 +325,10 @@
         @if (!string.IsNullOrEmpty(Model.RatingFilter))
         {
             <span> · rating: <strong>@Model.RatingFilter</strong></span>
+        }
+        @if (!string.IsNullOrEmpty(Model.StatusFilter))
+        {
+            <span> · status: <strong>@Model.StatusFilter</strong></span>
         }
     </span>
     <span>
@@ -502,6 +523,14 @@ document.addEventListener('click', function (e) {
     dot.classList.add('active');
     document.getElementById('cea-rating-input').value = val;
     dot.closest('form').submit();
+});
+
+// Status filter buttons
+document.querySelectorAll('.cea-status-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        document.getElementById('h-status').value = this.dataset.value;
+        this.closest('form').submit();
+    });
 });
 
 // Sender rating dots — AJAX save

@@ -3,7 +3,9 @@
     "allow": [
       "Bash(dotnet build:*)",
       "Bash(git diff:*)",
-      "Bash(sqlite3 \"C:\\\\Users\\\\wp710\\\\OneDrive\\\\Dev\\\\BetaLab\\\\Gmail_Analysis_Solution\\\\GmailAnalysisDB\\\\db_runtime\\\\gmailanalysis.db\" \"SELECT COUNT\\(*\\) FROM priority_message\")"
-    ]
+      "Bash(sqlite3 \"C:\\\\Users\\\\wp710\\\\OneDrive\\\\Dev\\\\BetaLab\\\\Gmail_Analysis_Solution\\\\GmailAnalysisDB\\\\db_runtime\\\\gmailanalysis.db\" \"SELECT COUNT\\(*\\) FROM priority_message\")",
+      "Bash(sqlite3 \"C:\\\\Users\\\\wp710\\\\OneDrive\\\\Dev\\\\BetaLab\\\\Gmail_Analysis_Solution\\\\GmailAnalysisDB\\\\db_runtime\\\\gmailanalysis.db\" \"SELECT first_seen, created_at FROM sender LIMIT 3;\")"
+    ],
+    "defaultMode": "default"
   }
 }

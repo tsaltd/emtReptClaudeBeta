@@ -20,28 +20,19 @@ public class HomeController : Controller
         _ratingService = ratingService;
     }
 
-    public async Task<IActionResult> Index(int page = 1, int pageSize = 20, bool sortAsc = false)
+    public async Task<IActionResult> Index()
     {
-        var runList    = await _runService.GetRunListAsync(null);
-        var senderList = await _senderService.SearchAsync(new SenderSearchViewModel
-        {
-            Page     = page,
-            PageSize = pageSize,
-            SortAsc  = sortAsc
-        });
+        var runList = await _runService.GetRunListAsync(null);
         var ratings = await _ratingService.GetAllAsync();
+        var counts  = await _senderService.SearchAsync(new SenderSearchViewModel { Page = 1, PageSize = 1 });
 
         var vm = new DashboardViewModel
         {
             TotalRuns       = runList.TotalRuns,
             TotalMessages   = runList.Runs.Sum(r => r.MessageCount),
-            TotalSenders    = senderList.TotalCount,
+            TotalSenders    = counts.TotalCount,
             MostRecentRun   = runList.Runs.FirstOrDefault(),
-            TopSenders      = senderList.Senders,
-            RatingBreakdown = ratings,
-            Page            = page,
-            PageSize        = pageSize,
-            SortAsc         = sortAsc
+            RatingBreakdown = ratings
         };
 
         return View(vm);
@@ -112,6 +103,7 @@ public class MessageController : Controller
         string? dateFrom,
         string? dateTo,
         string? ratingFilter,
+        string? statusFilter,
         int     page = 1,
         int     pageSize = 50)
     {
@@ -122,6 +114,7 @@ public class MessageController : Controller
             DateFrom     = dateFrom,
             DateTo       = dateTo,
             RatingFilter = ratingFilter,
+            StatusFilter = statusFilter,
             Page         = page,
             PageSize     = pageSize
         };
@@ -182,33 +175,33 @@ public class MessageController : Controller
 
     // GET /Message/Grouped — CEA-paged tree view
     public async Task<IActionResult> Grouped(
-        string? searchTerm, string? ratingFilter, bool priorityOnly = false,
+        string? searchTerm, string? ratingFilter, string? statusFilter, bool priorityOnly = false,
         string sortBy = "count", bool sortAsc = false, int page = 1, int pageSize = 10,
         string? dateFrom = null, string? dateTo = null)
     {
-        var vm = await BuildGroupedViewModel(searchTerm, ratingFilter, priorityOnly, sortBy, sortAsc, page, pageSize, dateFrom, dateTo);
+        var vm = await BuildGroupedViewModel(searchTerm, ratingFilter, statusFilter, priorityOnly, sortBy, sortAsc, page, pageSize, dateFrom, dateTo);
         return View(vm);
     }
 
     // GET /Message/CeaReports — same data, report layout (no pills)
     public async Task<IActionResult> CeaReports(
-        string? searchTerm, string? ratingFilter, bool priorityOnly = false,
+        string? searchTerm, string? ratingFilter, string? statusFilter, bool priorityOnly = false,
         string sortBy = "count", bool sortAsc = false, int page = 1, int pageSize = 25,
         string? dateFrom = null, string? dateTo = null)
     {
-        var vm = await BuildGroupedViewModel(searchTerm, ratingFilter, priorityOnly, sortBy, sortAsc, page, pageSize, dateFrom, dateTo);
+        var vm = await BuildGroupedViewModel(searchTerm, ratingFilter, statusFilter, priorityOnly, sortBy, sortAsc, page, pageSize, dateFrom, dateTo);
         return View(vm);
     }
 
     private async Task<MessageGroupedViewModel> BuildGroupedViewModel(
-        string? searchTerm, string? ratingFilter, bool priorityOnly,
+        string? searchTerm, string? ratingFilter, string? statusFilter, bool priorityOnly,
         string sortBy, bool sortAsc, int page, int pageSize,
         string? dateFrom = null, string? dateTo = null)
     {
         var priorityIds = await _priorityService.GetAllIdsAsync();
         var ratings     = await _ratingService.GetAllAsync();
         var groups      = new List<CeaGroupViewModel>();
-        int total;
+        int total       = 0;
 
         if (priorityOnly)
         {
@@ -267,6 +260,7 @@ public class MessageController : Controller
                 {
                     SearchTerm   = searchTerm,
                     RatingFilter = ratingFilter,
+                    StatusFilter = statusFilter,
                     SortAsc      = false,
                     Page         = 1,
                     PageSize     = int.MaxValue
@@ -283,6 +277,7 @@ public class MessageController : Controller
                 {
                     SearchTerm   = searchTerm,
                     RatingFilter = ratingFilter,
+                    StatusFilter = statusFilter,
                     SortAsc      = sortAsc,
                     Page         = page,
                     PageSize     = pageSize
@@ -343,6 +338,7 @@ public class MessageController : Controller
         {
             SearchTerm       = searchTerm,
             RatingFilter     = ratingFilter,
+            StatusFilter     = statusFilter,
             DateFrom         = dateFrom,
             DateTo           = dateTo,
             PriorityOnly     = priorityOnly,
@@ -434,6 +430,7 @@ public class SenderController : Controller
     public async Task<IActionResult> Rows(
         string? searchTerm,
         string? ratingFilter,
+        string? statusFilter,
         int     page = 1,
         int     pageSize = 50)
     {
@@ -441,6 +438,7 @@ public class SenderController : Controller
         {
             SearchTerm   = searchTerm,
             RatingFilter = ratingFilter,
+            StatusFilter = statusFilter,
             Page         = page,
             PageSize     = pageSize
         };
@@ -450,12 +448,13 @@ public class SenderController : Controller
     }
 
     // GET /Sender/QuickRate
-    public async Task<IActionResult> QuickRate(string? searchTerm, string? ratingFilter, int page = 1)
+    public async Task<IActionResult> QuickRate(string? searchTerm, string? ratingFilter, string? statusFilter, int page = 1)
     {
         var vm = await _senderService.SearchAsync(new SenderSearchViewModel
         {
             SearchTerm   = searchTerm,
             RatingFilter = ratingFilter,
+            StatusFilter = statusFilter,
             Page         = page,
             PageSize     = 60
         });

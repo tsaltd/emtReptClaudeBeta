@@ -1,30 +1,79 @@
 @model DashboardViewModel
 @{ ViewData["Title"] = "Dashboard"; }
 
-@Html.AntiForgeryToken()
+@section Styles {
+<style>
+    /* ── Stat cards ───────────────────────────────────────────────── */
+    .hub-stat {
+        background: #fff; border: 1px solid #dee2e6;
+        border-radius: 6px; padding: .9rem 1.25rem;
+        display: flex; align-items: center; gap: 1rem;
+    }
+    .hub-stat-icon { font-size: 1.5rem; width: 2rem; text-align: center; color: #6c757d; }
+    .hub-stat-val  { font-size: 1.6rem; font-weight: 700; line-height: 1; color: #212529; }
+    .hub-stat-lbl  { font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; color: #868e96; margin-top: .15rem; }
 
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card stat-card bg-primary text-white">
-            <div class="card-body">
-                <div class="stat-number">@Model.TotalRuns</div>
-                <div class="stat-label" style="color:rgba(255,255,255,.7)">Total Runs</div>
+    /* ── Hub panel ────────────────────────────────────────────────── */
+    .hub-panel {
+        background: #fff; border: 1px solid #dee2e6;
+        border-radius: 6px; overflow: hidden;
+    }
+    .hub-panel-header {
+        background: #f8f9fa; border-bottom: 1px solid #dee2e6;
+        padding: .55rem 1rem;
+        font-size: .68rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: .6px; color: #868e96;
+    }
+    .hub-panel-body { padding: 1rem; }
+
+    /* ── Launch buttons ───────────────────────────────────────────── */
+    .hub-launch-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+        gap: .6rem;
+    }
+    .hub-btn {
+        display: flex; flex-direction: column; align-items: flex-start;
+        gap: .2rem; padding: .65rem .9rem;
+        border: 1px solid #dee2e6; border-radius: 5px;
+        background: #f8f9fa; cursor: pointer;
+        text-decoration: none; transition: all .12s;
+        color: #212529;
+    }
+    .hub-btn:hover { background: #e7efff; border-color: #0d6efd; color: #0d6efd; }
+    .hub-btn i     { font-size: .95rem; }
+    .hub-btn-label { font-size: .8rem; font-weight: 600; }
+    .hub-btn-sub   { font-size: .68rem; color: #868e96; }
+    .hub-btn:hover .hub-btn-sub { color: #6ea8fe; }
+</style>
+}
+
+<!-- Stat strip -->
+<div class="row g-2 mb-3">
+    <div class="col-sm-4">
+        <div class="hub-stat">
+            <div class="hub-stat-icon"><i class="fas fa-layer-group"></i></div>
+            <div>
+                <div class="hub-stat-val">@Model.TotalRuns</div>
+                <div class="hub-stat-lbl">Runs</div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card stat-card bg-success text-white">
-            <div class="card-body">
-                <div class="stat-number">@Model.TotalMessages.ToString("N0")</div>
-                <div class="stat-label" style="color:rgba(255,255,255,.7)">Total Messages</div>
+    <div class="col-sm-4">
+        <div class="hub-stat">
+            <div class="hub-stat-icon"><i class="fas fa-envelope"></i></div>
+            <div>
+                <div class="hub-stat-val">@Model.TotalMessages.ToString("N0")</div>
+                <div class="hub-stat-lbl">Messages</div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card stat-card bg-warning text-dark">
-            <div class="card-body">
-                <div class="stat-number">@Model.TotalSenders.ToString("N0")</div>
-                <div class="stat-label">Unique Senders</div>
+    <div class="col-sm-4">
+        <div class="hub-stat">
+            <div class="hub-stat-icon"><i class="fas fa-users"></i></div>
+            <div>
+                <div class="hub-stat-val">@Model.TotalSenders.ToString("N0")</div>
+                <div class="hub-stat-lbl">Senders</div>
             </div>
         </div>
     </div>
@@ -32,139 +81,145 @@
 
 @if (Model.MostRecentRun != null)
 {
-    <div class="alert alert-info d-flex align-items-center gap-3 mb-4">
-        <i class="fas fa-clock fa-lg"></i>
-        <div>
-            <strong>Most recent run:</strong> @Model.MostRecentRun.DisplayWindow
-            @if (!string.IsNullOrEmpty(Model.MostRecentRun.SourceLabel))
-            { <span class="text-muted ms-2">— @Model.MostRecentRun.SourceLabel</span> }
-            <span class="ms-3 badge bg-primary">@Model.MostRecentRun.MessageCount messages</span>
-            <span class="ms-1 badge bg-secondary">@Model.MostRecentRun.SenderCount senders</span>
-            <a asp-controller="Run" asp-action="Detail" asp-route-id="@Model.MostRecentRun.RunId"
-               class="btn btn-sm btn-outline-primary ms-3">View Run →</a>
-        </div>
+    <div class="alert alert-info py-2 px-3 d-flex align-items-center gap-3 mb-3" style="font-size:.82rem">
+        <i class="fas fa-clock"></i>
+        <span>
+            <strong>Last run:</strong> @Model.MostRecentRun.DisplayWindow &nbsp;·&nbsp;
+            <span class="badge bg-primary">@Model.MostRecentRun.MessageCount msg</span>
+            <span class="badge bg-secondary ms-1">@Model.MostRecentRun.SenderCount senders</span>
+        </span>
+        <a asp-controller="Run" asp-action="Detail" asp-route-id="@Model.MostRecentRun.RunId"
+           class="btn btn-sm btn-outline-primary ms-auto" style="font-size:.75rem">View Run →</a>
     </div>
 }
 
-<div class="table-card">
-    <div class="p-3 border-bottom d-flex align-items-center gap-2 flex-wrap">
-        <h6 class="mb-0 fw-bold me-auto">
-            <i class="fas fa-users me-2 text-muted"></i>Senders
-            <span class="text-muted fw-normal small ms-2">(@Model.TotalSenders.ToString("N0") total)</span>
-        </h6>
-        <a href="?page=1&pageSize=@Model.PageSize&sortAsc=@((!Model.SortAsc).ToString().ToLower())"
-           class="btn btn-sm btn-outline-secondary">
-            <i class="fas fa-sort-amount-@(Model.SortAsc ? "up" : "down") me-1"></i>@(Model.SortAsc ? "Asc" : "Desc")
-        </a>
-        <a asp-controller="Sender" asp-action="Index" class="btn btn-sm btn-outline-secondary">View All</a>
-    </div>
-    <table class="table table-hover">
-        <thead>
-            <tr>
-                <th>Email Address</th>
-                <th>Display Name</th>
-                <th class="text-center">Messages</th>
-                <th>Rating</th>
-                <th>Last Seen</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var s in Model.TopSenders)
-            {
-                <tr onclick="window.location='/Sender/Detail/@s.SenderId'" style="cursor:pointer">
-                    <td><code class="text-primary">@s.EmailAddress</code></td>
-                    <td class="text-muted small">@(s.DisplayName ?? "—")</td>
-                    <td class="text-center"><span class="badge bg-primary rounded-pill">@s.MsgCount</span></td>
-                    <td onclick="event.stopPropagation()">
-                        <div class="rating-picker" data-mode="row" data-sender-id="@s.SenderId">
-                            <button type="button" class="rating-picker-btn has-color"
-                                    style="background:@s.ColorCode" title="@s.RatingName"></button>
-                            <div class="rating-picker-panel">
-                                @foreach (var r in Model.RatingBreakdown)
-                                {
-                                    <div class="rating-swatch @(r.RatingId == s.RatingId ? "active" : "")"
-                                         style="background:@r.ColorCode"
-                                         data-rating-id="@r.RatingId"
-                                         data-rating-name="@r.RatingName"
-                                         data-color="@r.ColorCode"
-                                         title="@r.RatingName"></div>
-                                }
-                            </div>
-                        </div>
-                    </td>
-                    <td class="text-muted small">@s.DisplayLastSeen</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+<div class="row g-3">
+    <!-- Left: criteria panel -->
+    <div class="col-lg-5">
+        <div class="hub-panel h-100">
+            <div class="hub-panel-header">Selection Criteria</div>
+            <div class="hub-panel-body">
+                <!-- Search -->
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-muted mb-1" style="font-size:.68rem;text-transform:uppercase;letter-spacing:.5px">Search</label>
+                    <input id="hub-search" type="text" class="form-control form-control-sm"
+                           placeholder="Email, subject, snippet…" style="border-radius:0" />
+                </div>
 
-    @* ── Pagination footer ── *@
-    @if (Model.TotalPages > 1)
-    {
-        <div class="p-3 border-top d-flex align-items-center justify-content-between">
-            <a href="?page=@(Model.Page - 1)&pageSize=@Model.PageSize&sortAsc=@(Model.SortAsc.ToString().ToLower())"
-               class="btn btn-sm btn-outline-secondary @(!Model.HasPrev ? "disabled" : "")">
-                <i class="fas fa-chevron-left me-1"></i> Prev
-            </a>
-            <span class="text-muted small">Page @Model.Page of @Model.TotalPages</span>
-            <a href="?page=@(Model.Page + 1)&pageSize=@Model.PageSize&sortAsc=@(Model.SortAsc.ToString().ToLower())"
-               class="btn btn-sm btn-outline-secondary @(!Model.HasNext ? "disabled" : "")">
-                Next <i class="fas fa-chevron-right ms-1"></i>
-            </a>
+                <!-- Filter bar (date / status / rating / priority) -->
+                @await Html.PartialAsync("_FilterBar", new FilterBarViewModel
+                {
+                    AvailableRatings = Model.RatingBreakdown
+                })
+
+                <div class="mt-2 d-flex justify-content-end">
+                    <button type="button" id="hub-reset" class="btn btn-sm btn-outline-secondary" style="border-radius:0;font-size:.75rem">
+                        ✕ Reset All
+                    </button>
+                </div>
+            </div>
         </div>
-    }
-</div>
+    </div>
 
-<!-- Toast -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index:9999">
-    <div id="rating-toast" class="toast align-items-center border-0" role="alert">
-        <div class="d-flex">
-            <div class="toast-body" id="toast-msg">Rating saved.</div>
-            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
+    <!-- Right: launch grid -->
+    <div class="col-lg-7">
+        <div class="hub-panel">
+            <div class="hub-panel-header">Launch View</div>
+            <div class="hub-panel-body">
+
+                <p class="text-muted small mb-3">Set criteria on the left, then click any view to open it pre-filtered.</p>
+
+                <!-- Senders -->
+                <div class="mb-1" style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#868e96">Senders</div>
+                <div class="hub-launch-grid mb-3">
+                    <button class="hub-btn" onclick="launch('/Sender/Index')">
+                        <i class="fas fa-users"></i>
+                        <span class="hub-btn-label">Sender List</span>
+                        <span class="hub-btn-sub">search · rating · status</span>
+                    </button>
+                    <button class="hub-btn" onclick="launch('/Sender/QuickRate')">
+                        <i class="fas fa-star-half-alt"></i>
+                        <span class="hub-btn-label">Quick Rate</span>
+                        <span class="hub-btn-sub">bulk rating · search · status</span>
+                    </button>
+                    <button class="hub-btn" onclick="launch('/Sender/Browse', false)">
+                        <i class="fas fa-address-card"></i>
+                        <span class="hub-btn-label">Browse Senders</span>
+                        <span class="hub-btn-sub">single-record navigator</span>
+                    </button>
+                </div>
+
+                <!-- Messages -->
+                <div class="mb-1" style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#868e96">Messages</div>
+                <div class="hub-launch-grid mb-3">
+                    <button class="hub-btn" onclick="launch('/Message/CeaReports')">
+                        <i class="fas fa-file-alt"></i>
+                        <span class="hub-btn-label">CEA Reports</span>
+                        <span class="hub-btn-sub">tree · date · status · rating</span>
+                    </button>
+                    <button class="hub-btn" onclick="launch('/Message/Grouped')">
+                        <i class="fas fa-layer-group"></i>
+                        <span class="hub-btn-label">CEA Groups</span>
+                        <span class="hub-btn-sub">grouped · pills · priority</span>
+                    </button>
+                    <button class="hub-btn" onclick="launch('/Message/Index')">
+                        <i class="fas fa-envelope"></i>
+                        <span class="hub-btn-label">Messages</span>
+                        <span class="hub-btn-sub">flat list · search · date</span>
+                    </button>
+                    <button class="hub-btn" onclick="launch('/Message/Browse', false)">
+                        <i class="fas fa-address-card"></i>
+                        <span class="hub-btn-label">Msg Browse</span>
+                        <span class="hub-btn-sub">sender panel · message list</span>
+                    </button>
+                </div>
+
+                <!-- Tools -->
+                <div class="mb-1" style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#868e96">Tools</div>
+                <div class="hub-launch-grid">
+                    <button class="hub-btn" onclick="window.location='/GmailIngest'">
+                        <i class="fas fa-download"></i>
+                        <span class="hub-btn-label">Gmail Ingest</span>
+                        <span class="hub-btn-sub">run harvester</span>
+                    </button>
+                    <button class="hub-btn" onclick="window.location='/Run'">
+                        <i class="fas fa-layer-group"></i>
+                        <span class="hub-btn-label">Runs</span>
+                        <span class="hub-btn-sub">ingest history</span>
+                    </button>
+                </div>
+
+            </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
 <script>
-(function () {
-    var toast = new bootstrap.Toast(document.getElementById('rating-toast'), { delay: 2000 });
-    var token = $('input[name="__RequestVerificationToken"]').val();
+function launch(url, useFilters) {
+    if (useFilters === false) {
+        window.location = url;
+        return;
+    }
+    var f      = FilterBar.getValues();
+    var search = $('#hub-search').val().trim();
+    var params = {};
 
-    $(document).on('click', '.rating-picker[data-mode="row"] .rating-swatch', function (e) {
-        e.stopPropagation();
-        var ratingId   = $(this).data('rating-id');
-        var ratingName = $(this).data('rating-name');
-        var color      = $(this).data('color');
-        var $picker    = $(this).closest('.rating-picker');
-        var senderId   = $picker.data('sender-id');
-        $picker.find('.rating-swatch').removeClass('active');
-        $(this).addClass('active');
-        $picker.find('.rating-picker-btn').css('background', color).attr('title', ratingName);
-        $picker.find('.rating-picker-panel').removeClass('open');
+    if (search)           params.searchTerm   = search;
+    if (f.ratingFilter)   params.ratingFilter  = f.ratingFilter;
+    if (f.statusFilter)   params.statusFilter  = f.statusFilter;
+    if (f.dateFrom)       params.dateFrom      = f.dateFrom;
+    if (f.dateTo)         params.dateTo        = f.dateTo;
+    if (f.priorityOnly)   params.priorityOnly  = 'true';
 
-        $.ajax({
-            url: '/Sender/UpdateRating', method: 'POST',
-            contentType: 'application/json',
-            headers: { 'RequestVerificationToken': token },
-            data: JSON.stringify({ senderId: parseInt(senderId), ratingId: parseInt(ratingId) }),
-            success: function (res) {
-                if (res.success) {
-                    $('#toast-msg').text('Rating saved: ' + res.ratingName);
-                    $('#rating-toast').removeClass('bg-danger').addClass('bg-success text-white');
-                } else {
-                    $('#toast-msg').text('Error: ' + res.message);
-                    $('#rating-toast').removeClass('bg-success').addClass('bg-danger text-white');
-                }
-                toast.show();
-            },
-            error: function () {
-                $('#toast-msg').text('Network error — rating not saved.');
-                $('#rating-toast').addClass('bg-danger text-white');
-                toast.show();
-            }
-        });
-    });
-})();
+    var qs = $.param(params);
+    window.location = url + (qs ? '?' + qs : '');
+}
+
+$('#hub-reset').on('click', function () {
+    $('#hub-search').val('');
+    // Trigger _FilterBar clear button
+    document.getElementById('fb-clear').click();
+});
 </script>
 }

@@ -59,10 +59,11 @@ public class MessageRepository : IMessageRepository
         string? dateFrom,
         string? dateTo,
         string? ratingFilter,
+        string? statusFilter,
         int     page,
         int     pageSize)
     {
-        var q = BuildQuery(senderId, searchTerm, dateFrom, dateTo, ratingFilter);
+        var q = BuildQuery(senderId, searchTerm, dateFrom, dateTo, ratingFilter, statusFilter);
         return await q.OrderBy(m => m.EmailAddress)
                       .ThenBy(m => m.FromRaw)
                       .ThenBy(m => m.Subject)
@@ -77,8 +78,9 @@ public class MessageRepository : IMessageRepository
         string? searchTerm,
         string? dateFrom,
         string? dateTo,
-        string? ratingFilter) =>
-        await BuildQuery(senderId, searchTerm, dateFrom, dateTo, ratingFilter).CountAsync();
+        string? ratingFilter,
+        string? statusFilter) =>
+        await BuildQuery(senderId, searchTerm, dateFrom, dateTo, ratingFilter, statusFilter).CountAsync();
 
     public async Task<Message?> GetByIdAsync(int id) =>
         await _db.Messages.Include(m => m.Sender).Include(m => m.Run).FirstOrDefaultAsync(m => m.MessageId == id);
@@ -120,7 +122,8 @@ public class MessageRepository : IMessageRepository
         string? searchTerm,
         string? dateFrom,
         string? dateTo,
-        string? ratingFilter)
+        string? ratingFilter,
+        string? statusFilter)
     {
         var q = _db.VMessageWithSenders.AsQueryable();
 
@@ -148,6 +151,9 @@ public class MessageRepository : IMessageRepository
             var filters = ratingFilter.Split(',', StringSplitOptions.RemoveEmptyEntries);
             q = q.Where(m => filters.Contains(m.RatingName));
         }
+
+        if (!string.IsNullOrWhiteSpace(statusFilter))
+            q = q.Where(m => m.StatusName == statusFilter);
 
         return q;
     }

@@ -3,41 +3,6 @@
 
 @section Styles {
 <style>
-    /* ── Filter bar ──────────────────────────────────────────────── */
-    .msg-filter {
-        background: #fff;
-        border: 1px solid #ced4da;
-        padding: .875rem 1rem;
-        margin-bottom: 0;
-    }
-    .msg-filter .f-label {
-        font-size: .68rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: .65px;
-        color: #868e96;
-        margin-bottom: .2rem;
-    }
-    .msg-filter .form-control,
-    .msg-filter .form-select {
-        border-radius: 0;
-        border-color: #ced4da;
-        font-size: .8rem;
-        height: 30px;
-        padding: .2rem .5rem;
-    }
-    .msg-filter .form-control:focus,
-    .msg-filter .form-select:focus {
-        box-shadow: none;
-        border-color: #0d6efd;
-    }
-    #btn-clear {
-        border-radius: 0;
-        font-size: .75rem;
-        height: 30px;
-        padding: 0 .75rem;
-    }
-
     /* ── Status strip ────────────────────────────────────────────── */
     .msg-status {
         display: flex;
@@ -176,42 +141,26 @@
 </style>
 }
 
-<!-- Filter bar -->
-<div class="msg-filter">
-    <div class="row g-2 align-items-end">
-        <div class="col-md-4">
-            <div class="f-label">Search</div>
-            <input id="f-search" type="text" class="form-control"
+<!-- Search -->
+<div class="card mb-2 border-0 shadow-sm">
+    <div class="card-body py-2">
+        <div class="d-flex align-items-center gap-2">
+            <label class="form-label small fw-semibold text-muted mb-0" style="white-space:nowrap">Search</label>
+            <input id="f-search" type="text" class="form-control form-control-sm" style="max-width:280px"
                    placeholder="Subject, sender, snippet…" value="@Model.SearchTerm" />
-        </div>
-        <div class="col-md-2">
-            <div class="f-label">Rating</div>
-            @{
-                var ratingOpts = new System.Text.StringBuilder();
-                ratingOpts.Append("<option value=\"\">All Ratings</option>");
-                foreach (var r in Model.AvailableRatings)
-                {
-                    var sel = (Model.RatingFilter == r.RatingName) ? " selected" : "";
-                    ratingOpts.Append($"<option value=\"{r.RatingName}\"{sel}>{r.RatingName}</option>");
-                }
-            }
-            <select id="f-rating" class="form-select">@Html.Raw(ratingOpts.ToString())</select>
-        </div>
-        <div class="col-md-2">
-            <div class="f-label">Date From</div>
-            <input id="f-date-from" type="date" class="form-control" value="@Model.DateFrom" />
-        </div>
-        <div class="col-md-2">
-            <div class="f-label">Date To</div>
-            <input id="f-date-to" type="date" class="form-control" value="@Model.DateTo" />
-        </div>
-        <div class="col-md-1 d-flex align-items-end">
-            <button id="btn-clear" class="btn btn-outline-secondary w-100">
-                <i class="fas fa-times me-1"></i>Clear
-            </button>
         </div>
     </div>
 </div>
+
+@await Html.PartialAsync("_FilterBar", new FilterBarViewModel
+{
+    AvailableRatings = Model.AvailableRatings,
+    SelectedRatings  = Model.RatingFilter,
+    StatusFilter     = Model.StatusFilter,
+    DateFrom         = Model.DateFrom,
+    DateTo           = Model.DateTo,
+    ShowPriority     = false
+})
 
 <!-- Status strip -->
 <div class="msg-status">
@@ -230,28 +179,22 @@
 <script>
     let msgTimer, currentPage = 1;
 
-    function getFilters(page) {
-        return {
-            searchTerm:   $('#f-search').val(),
-            ratingFilter: $('#f-rating').val(),
-            dateFrom:     $('#f-date-from').val(),
-            dateTo:       $('#f-date-to').val(),
-            page:         page || 1,
-            pageSize:     50
-        };
-    }
-
     function refresh(page) {
         currentPage = page || 1;
-        const params = $.param(getFilters(currentPage));
+        const f = FilterBar.getValues();
+        const params = $.param({
+            searchTerm:   $('#f-search').val(),
+            ratingFilter: f.ratingFilter,
+            statusFilter: f.statusFilter,
+            dateFrom:     f.dateFrom,
+            dateTo:       f.dateTo,
+            page:         currentPage,
+            pageSize:     50
+        });
         $.get('/Message/Rows?' + params, function(html) {
             $('#message-table-container').html(html);
             $('#page-indicator').text(currentPage);
         });
-    }
-
-    function updateCount(total) {
-        $('#result-count').text(total);
     }
 
     $('#f-search').on('input', function() {
@@ -259,13 +202,7 @@
         msgTimer = setTimeout(() => refresh(1), 300);
     });
 
-    $('#f-rating, #f-date-from, #f-date-to').on('change', () => refresh(1));
-
-    $('#btn-clear').on('click', function() {
-        $('#f-search, #f-date-from, #f-date-to').val('');
-        $('#f-rating').val('');
-        refresh(1);
-    });
+    FilterBar.onChange = function() { refresh(1); };
 
     $(document).on('click', '.page-btn', function() {
         refresh(parseInt($(this).data('page')));

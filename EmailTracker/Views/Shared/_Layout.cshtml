@@ -14,7 +14,8 @@
             --sidebar-bg: #1a1d23;
             --sidebar-text: #adb5bd;
         }
-        body { display: flex; min-height: 100vh; background: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
+        html { font-size: 16px; }
+        body { display: flex; min-height: 100vh; background: #f8f9fa; font-family: 'Segoe UI', sans-serif; font-size: 1rem; }
 
         /* Sidebar */
         #sidebar {
@@ -44,8 +45,8 @@
         #sidebar nav { flex: 1; padding: .75rem 0; overflow: hidden; }
         #sidebar nav a {
             display: flex; align-items: center; gap: .75rem;
-            padding: .6rem 1.5rem; color: var(--sidebar-text);
-            text-decoration: none; font-size: .875rem;
+            padding: .65rem 1.5rem; color: var(--sidebar-text);
+            text-decoration: none; font-size: .95rem;
             white-space: nowrap; min-width: var(--sidebar-width);
         }
         #sidebar nav a.active {
@@ -67,8 +68,8 @@
             padding: .75rem 1.5rem; display: flex; align-items: center;
             justify-content: space-between; position: sticky; top: 0; z-index: 50;
         }
-        #topbar h1 { font-size: 1.1rem; font-weight: 600; margin: 0; color: #212529; }
-        #content { padding: 1.5rem; flex: 1; color: #212529; }
+        #topbar h1 { font-size: 1.2rem; font-weight: 600; margin: 0; color: #212529; }
+        #content { padding: 1.5rem; flex: 1; color: #212529; font-size: 1rem; }
 
         /* Darker content text */
         #content .text-muted { color: #555 !important; }
@@ -84,11 +85,11 @@
 
         /* Tables */
         .table-card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow: hidden; }
-        .table-card .table { margin: 0; font-size: .875rem; }
+        .table-card .table { margin: 0; font-size: .95rem; }
         .table-card .table thead th {
             background: #f8f9fa; border-bottom: 2px solid #dee2e6;
-            font-weight: 600; font-size: .8rem; text-transform: uppercase;
-            letter-spacing: .5px; color: #6c757d;
+            font-weight: 600; font-size: .875rem; text-transform: uppercase;
+            letter-spacing: .5px; color: #495057;
         }
         .table-card .table tbody tr:hover { background: #f0f4ff; cursor: pointer; }
 
@@ -105,6 +106,33 @@
         /* Pagination */
         .pagination { margin: 0; }
         .pagination .page-link { font-size: .875rem; }
+
+        /* ── Large/Dark reading mode ── */
+        body.reading-mode { font-size: 1.15rem; }
+        body.reading-mode #content { font-size: 1.15rem; color: #111 !important; }
+        body.reading-mode .table-card .table { font-size: 1.05rem; }
+        body.reading-mode .table-card .table tbody td { color: #111 !important; font-size: 1.05rem; }
+        body.reading-mode .table-card .table thead th { color: #222 !important; font-size: .95rem; }
+        body.reading-mode .badge, body.reading-mode .btn { font-size: 1rem; }
+        body.reading-mode p, body.reading-mode span:not(.badge),
+        body.reading-mode div, body.reading-mode label,
+        body.reading-mode a:not(#sidebar nav a) { color: #111 !important; }
+        body.reading-mode .text-muted,
+        body.reading-mode small.text-muted { color: #444 !important; }
+        body.reading-mode .stat-label { color: #444 !important; font-size: .95rem; }
+        body.reading-mode .stat-number { font-size: 2.4rem; }
+        body.reading-mode .pagination .page-link { font-size: 1.05rem; padding: .45rem .8rem; }
+        body.reading-mode #topbar h1 { font-size: 1.4rem; }
+        body.reading-mode #topbar small { color: #444 !important; font-size: 1rem; }
+        body.reading-mode .card-title, body.reading-mode .card-text { color: #111 !important; }
+        body.reading-mode #sidebar nav a { font-size: 1.05rem; padding: .75rem 1.5rem; }
+        #btn-reading-mode {
+            background: none; border: 1px solid #dee2e6; border-radius: 6px;
+            padding: .25rem .6rem; font-size: .85rem; cursor: pointer;
+            color: #666; transition: all .15s;
+        }
+        #btn-reading-mode:hover { background: #f0f0f0; }
+        body.reading-mode #btn-reading-mode { background: #ffc; border-color: #aaa; color: #222; font-weight: 600; }
 
         /* Status toggle button (shared across pages) */
         .status-btn {
@@ -177,7 +205,7 @@
             <i class="fas fa-address-card"></i> Msg Browse
         </a>
         <a asp-controller="Sender"  asp-action="Index"  class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Sender" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")">
-            <i class="fas fa-users"></i> Senders
+            <i class="fas fa-users"></i> Sender List
         </a>
         <a asp-controller="Sender"  asp-action="Browse" class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Browse" ? "active" : "")">
             <i class="fas fa-address-card"></i> Browse Senders
@@ -201,7 +229,10 @@
 <div id="main">
     <header id="topbar">
         <h1>@ViewData["Title"]</h1>
-        <small class="text-muted">@DateTime.Now.ToString("dddd, MMMM d, yyyy")</small>
+        <div style="display:flex;align-items:center;gap:.75rem">
+            <button id="btn-reading-mode" title="Toggle large/dark reading mode">🔎 Reading Mode</button>
+            <small class="text-muted">@DateTime.Now.ToString("dddd, MMMM d, yyyy")</small>
+        </div>
     </header>
     <main id="content">
         @RenderBody()
@@ -248,6 +279,18 @@
             }
         });
     });
+
+    // Reading mode toggle
+    (function () {
+        var on = localStorage.getItem('reading-mode') === '1';
+        function apply(v) { $('body').toggleClass('reading-mode', v); }
+        apply(on);
+        $('#btn-reading-mode').on('click', function () {
+            on = !on;
+            localStorage.setItem('reading-mode', on ? '1' : '0');
+            apply(on);
+        });
+    })();
 
     // Sidebar collapse
     (function () {

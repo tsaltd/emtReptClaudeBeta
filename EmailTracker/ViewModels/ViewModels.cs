@@ -12,6 +12,7 @@ public class FilterBarViewModel
     public string? DateTo          { get; set; }
     public string? StatusFilter    { get; set; }   // "" | "OPEN" | "RATED"
     public bool    PriorityOnly    { get; set; }
+    public bool    ShowDate        { get; set; } = true;
     public bool    ShowStatus      { get; set; } = true;
     public bool    ShowPriority    { get; set; } = true;
 }
@@ -88,6 +89,7 @@ public class MessageSearchViewModel
     public string? DateFrom     { get; set; }
     public string? DateTo       { get; set; }
     public string? RatingFilter { get; set; }
+    public string? StatusFilter { get; set; }   // "" | "OPEN" | "RATED"
     public int     Page         { get; set; } = 1;
     public int     PageSize     { get; set; } = 50;
 
@@ -256,6 +258,7 @@ public class MessageGroupedViewModel
 {
     public string? SearchTerm   { get; set; }
     public string? RatingFilter { get; set; }
+    public string? StatusFilter { get; set; }   // "" | "OPEN" | "RATED"
     public string? DateFrom     { get; set; }
     public string? DateTo       { get; set; }
     public bool    PriorityOnly { get; set; }
