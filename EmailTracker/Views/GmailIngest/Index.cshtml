@@ -58,9 +58,9 @@
                     </div>
 
                     <table class="table table-sm mb-4" style="font-size:.8rem">
-                        <tr><td class="text-muted">Query</td><td><code id="query-label">newer_than:14d</code></td></tr>
-                        <tr><td class="text-muted">Max messages</td><td><code>4000</code></td></tr>
-                        <tr><td class="text-muted">Database</td><td><code>gmailanalysis.db</code></td></tr>
+                        <tr><td class="">Query</td><td><code id="query-label">newer_than:14d</code></td></tr>
+                        <tr><td class="">Max messages</td><td><code>4000</code></td></tr>
+                        <tr><td class="">Database</td><td><code>gmailanalysis.db</code></td></tr>
                     </table>
 
                     <!-- Progress panel (shown while running) -->
@@ -70,8 +70,8 @@
                             <div class="spinner-border spinner-border-sm text-primary flex-shrink-0"></div>
                             <div>
                                 <div class="fw-semibold" style="font-size:.875rem">Ingest running&hellip;</div>
-                                <div id="step-label" class="text-muted" style="font-size:.8rem">Starting&hellip;</div>
-                                <div class="text-muted" style="font-size:.8rem">
+                                <div id="step-label" class="" style="font-size:.8rem">Starting&hellip;</div>
+                                <div class="" style="font-size:.8rem">
                                     Elapsed: <span id="elapsed">0s</span>
                                 </div>
                             </div>
@@ -203,8 +203,8 @@ function buildResultHtml(r) {
             '    <tr><td>New senders</td><td><strong>' + res.newSenders + '</strong></td></tr>' +
             '    <tr><td>Updated senders</td><td><strong>' + res.updatedSenders + '</strong></td></tr>' +
             '    <tr><td>Duplicates skipped</td><td><strong>' + res.skippedDuplicates + '</strong></td></tr>' +
-            '    <tr><td>Completed at</td><td class="text-muted">' + res.completedAt + '</td></tr>' +
-            '    <tr><td>Source file</td><td class="text-muted" style="font-size:.75rem;word-break:break-all">' + res.sourceFile + '</td></tr>' +
+            '    <tr><td>Completed at</td><td class="">' + res.completedAt + '</td></tr>' +
+            '    <tr><td>Source file</td><td class="" style="font-size:.75rem;word-break:break-all">' + res.sourceFile + '</td></tr>' +
             '  </table>' +
             '  <a href="/Run" class="btn btn-sm btn-outline-success">View Runs</a>' +
             '  <a href="/Sender" class="btn btn-sm btn-outline-secondary ms-2">View Senders</a>' +

@@ -22,8 +22,8 @@
             @foreach (var s in Model.Senders)
             {
                 <tr>
-                    <td><code class="text-primary small">@s.EmailAddress</code></td>
-                    <td class="text-muted small">@(s.DisplayName ?? "—")</td>
+                    <td><code class="small">@s.EmailAddress</code></td>
+                    <td class="small">@(s.DisplayName ?? "—")</td>
                     <td class="text-center"><span class="badge bg-primary rounded-pill">@s.MsgCount</span></td>
                     <td>
                         <button type="button"
@@ -49,8 +49,8 @@
                             </div>
                         </div>
                     </td>
-                    <td class="text-muted small">@s.DisplayFirstSeen</td>
-                    <td class="text-muted small">@s.DisplayLastSeen</td>
+                    <td class="small">@s.DisplayFirstSeen</td>
+                    <td class="small">@s.DisplayLastSeen</td>
                     <td>
                         <a asp-controller="Sender" asp-action="Detail" asp-route-id="@s.SenderId"
                            class="btn btn-sm btn-outline-primary">Detail</a>

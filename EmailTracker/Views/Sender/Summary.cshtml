@@ -28,7 +28,7 @@
            class="btn btn-sm btn-outline-secondary @(!Model.HasPrev ? "disabled" : "")">
             <i class="fas fa-chevron-left"></i> Prev
         </a>
-        <span class="text-muted small">@Model.Page / @Model.TotalPages</span>
+        <span class="small">@Model.Page / @Model.TotalPages</span>
         <a href="?id=@Model.SenderId&page=@Model.NextPage&pageSize=@Model.PageSize&sortAsc=@(Model.SortAsc.ToString().ToLower())"
            class="btn btn-sm btn-outline-secondary @(!Model.HasNext ? "disabled" : "")">
             Next <i class="fas fa-chevron-right"></i>
@@ -39,11 +39,11 @@
 @* ── Condensed sender header ─────────────────────────────────── *@
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2 px-3 d-flex align-items-center gap-3 flex-wrap">
-        <code class="text-primary fw-bold">@Model.EmailAddress</code>
+        <code class="fw-bold">@Model.EmailAddress</code>
         @if (!string.IsNullOrEmpty(Model.DisplayName))
         {
             <span class="vr d-none d-md-block"></span>
-            <span class="text-muted small">@Model.DisplayName</span>
+            <span class="small">@Model.DisplayName</span>
         }
         <span class="vr d-none d-md-block"></span>
         <span class="badge bg-primary rounded-pill">@Model.MsgCount.ToString("N0") msgs</span>
@@ -51,7 +51,7 @@
         {
             var fs = DateTime.TryParse(Model.FirstSeen, out var fsDt) ? fsDt.ToString("MMM d, yyyy") : Model.FirstSeen;
             var ls = DateTime.TryParse(Model.LastSeen,  out var lsDt) ? lsDt.ToString("MMM d, yyyy") : Model.LastSeen;
-            <span class="text-muted small">@fs – @ls</span>
+            <span class="small">@fs – @ls</span>
         }
         <span class="ms-auto">
             <div class="rating-picker" data-mode="row" data-sender-id="@Model.SenderId">
@@ -106,10 +106,10 @@ else
                             @foreach (var m in group.Messages)
                             {
                                 <tr>
-                                    <td class="text-nowrap text-muted">@m.DisplayDate</td>
+                                    <td class="text-nowrap">@m.DisplayDate</td>
                                     <td>@(m.Subject ?? "—")</td>
-                                    <td class="text-muted" style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@(m.Snippet ?? "")</td>
-                                    <td class="text-muted">
+                                    <td class="" style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@(m.Snippet ?? "")</td>
+                                    <td class="">
                                         <a asp-controller="Run" asp-action="Detail" asp-route-id="@m.RunId"
                                            class="text-decoration-none text-muted">#@m.RunId</a>
                                     </td>
@@ -132,7 +132,7 @@ else
                class="btn btn-sm btn-outline-secondary @(!Model.HasPrev ? "disabled" : "")">
                 <i class="fas fa-chevron-left me-1"></i> Prev
             </a>
-            <span class="text-muted small">
+            <span class="small">
                 Page @Model.Page of @Model.TotalPages
                 <span class="ms-2">(@Model.TotalGroups from-names total)</span>
             </span>

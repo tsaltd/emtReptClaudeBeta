@@ -13,7 +13,13 @@
             --accent: #0d6efd;
             --sidebar-bg: #1a1d23;
             --sidebar-text: #adb5bd;
+            --muted: #555;
+            --label: #444;
+            --sublabel: #555;
         }
+        /* Global muted text override — replaces Bootstrap's washed-out #868e96 */
+        .text-muted, small.text-muted { color: var(--muted) !important; }
+        small { color: var(--muted); }
         html { font-size: 16px; }
         body { display: flex; min-height: 100vh; background: #f8f9fa; font-family: 'Segoe UI', sans-serif; font-size: 1rem; }
 

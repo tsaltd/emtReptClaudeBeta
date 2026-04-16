@@ -116,12 +116,12 @@
     <div class="card-body py-2 px-3">
         <div class="row g-2 align-items-end">
             <div class="col-md-5">
-                <label class="form-label small fw-semibold text-muted mb-1">Search</label>
+                <label class="form-label small fw-semibold mb-1">Search</label>
                 <input name="searchTerm" type="text" class="form-control form-control-sm"
                        placeholder="Email or display name…" value="@Model.SearchTerm" />
             </div>
             <div class="col-md-4">
-                <label class="form-label small fw-semibold text-muted mb-1">Rating</label>
+                <label class="form-label small fw-semibold mb-1">Rating</label>
                 <input type="hidden" name="ratingFilter" id="filter-rating-input" value="@Model.RatingFilter" />
                 @{ var activeFilters = (Model.RatingFilter ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet(); }
                 <div class="d-flex gap-1 flex-wrap align-items-center">
@@ -137,7 +137,7 @@
                 </div>
             </div>
             <div class="col-auto">
-                <label class="form-label small fw-semibold text-muted mb-1">Status</label>
+                <label class="form-label small fw-semibold mb-1">Status</label>
                 <input type="hidden" name="statusFilter" id="qr-status-input" value="@Model.StatusFilter" />
                 <div class="d-flex gap-0">
                     <button type="button" class="btn btn-sm qr-status-btn @(string.IsNullOrEmpty(Model.StatusFilter) ? "btn-secondary" : "btn-outline-secondary")"
@@ -161,7 +161,7 @@
 @* ── Bulk action bar ──────────────────────────────────────────── *@
 <div id="bulk-bar">
     <span id="bulk-count">0 selected</span>
-    <span class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.4px">Set to →</span>
+    <span class="" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.4px">Set to →</span>
     @foreach (var r in Model.AvailableRatings)
     {
         <button class="bulk-rating-btn"
@@ -176,7 +176,7 @@
 
 @* ── Results count ────────────────────────────────────────────── *@
 <div class="d-flex justify-content: space-between align-items-center px-1 py-1 border-bottom">
-    <span class="text-muted small">@Model.TotalCount.ToString("N0") sender(s) &nbsp;·&nbsp; Page @Model.Page of @Model.TotalPages</span>
+    <span class="small">@Model.TotalCount.ToString("N0") sender(s) &nbsp;·&nbsp; Page @Model.Page of @Model.TotalPages</span>
 </div>
 
 @* ── Table ───────────────────────────────────────────────────── *@
@@ -210,7 +210,7 @@
                     <td>
                         <a asp-controller="Sender" asp-action="Detail" asp-route-id="@s.SenderId"
                            class="text-decoration-none">
-                            <code class="text-primary">@s.EmailAddress</code>
+                            <code class="">@s.EmailAddress</code>
                         </a>
                     </td>
                     <td>
@@ -247,12 +247,12 @@
                             </select>
                         </div>
                     </td>
-                    <td class="text-muted">@(s.DisplayName ?? "—")</td>
+                    <td class="">@(s.DisplayName ?? "—")</td>
                     <td class="text-center">
                         <span class="badge bg-primary rounded-pill">@s.MsgCount</span>
                     </td>
-                    <td class="text-muted">@s.DisplayFirstSeen</td>
-                    <td class="text-muted">@s.DisplayLastSeen</td>
+                    <td class="">@s.DisplayFirstSeen</td>
+                    <td class="">@s.DisplayLastSeen</td>
                 </tr>
             }
         </tbody>

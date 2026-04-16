@@ -21,12 +21,12 @@
             @foreach (var r in Model.Runs)
             {
                 <tr>
-                    <td class="text-muted small">@r.RunId</td>
+                    <td class="small">@r.RunId</td>
                     <td><strong>@r.DisplayWindow</strong></td>
-                    <td class="text-muted small">@(r.SourceLabel ?? "—")</td>
+                    <td class="small">@(r.SourceLabel ?? "—")</td>
                     <td class="text-center"><span class="badge bg-primary rounded-pill">@r.MessageCount</span></td>
                     <td class="text-center"><span class="badge bg-secondary rounded-pill">@r.SenderCount</span></td>
-                    <td class="text-muted small">@r.StartedAt</td>
+                    <td class="small">@r.StartedAt</td>
                     <td>
                         <a asp-controller="Run" asp-action="Detail" asp-route-id="@r.RunId"
                            class="btn btn-sm btn-outline-primary">Detail →</a>

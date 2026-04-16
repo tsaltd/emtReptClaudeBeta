@@ -9,9 +9,9 @@
         border-radius: 6px; padding: .9rem 1.25rem;
         display: flex; align-items: center; gap: 1rem;
     }
-    .hub-stat-icon { font-size: 1.5rem; width: 2rem; text-align: center; color: #6c757d; }
+    .hub-stat-icon { font-size: 1.5rem; width: 2rem; text-align: center; color: #495057; }
     .hub-stat-val  { font-size: 1.6rem; font-weight: 700; line-height: 1; color: #212529; }
-    .hub-stat-lbl  { font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; color: #868e96; margin-top: .15rem; }
+    .hub-stat-lbl  { font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; color: #444; margin-top: .15rem; }
 
     /* ── Hub panel ────────────────────────────────────────────────── */
     .hub-panel {
@@ -22,7 +22,7 @@
         background: #f8f9fa; border-bottom: 1px solid #dee2e6;
         padding: .55rem 1rem;
         font-size: .68rem; font-weight: 700; text-transform: uppercase;
-        letter-spacing: .6px; color: #868e96;
+        letter-spacing: .6px; color: #333;
     }
     .hub-panel-body { padding: 1rem; }
 
@@ -43,7 +43,7 @@
     .hub-btn:hover { background: #e7efff; border-color: #0d6efd; color: #0d6efd; }
     .hub-btn i     { font-size: .95rem; }
     .hub-btn-label { font-size: .8rem; font-weight: 600; }
-    .hub-btn-sub   { font-size: .68rem; color: #868e96; }
+    .hub-btn-sub   { font-size: .68rem; color: #555; }
     .hub-btn:hover .hub-btn-sub { color: #6ea8fe; }
 </style>
 }
@@ -101,7 +101,7 @@
             <div class="hub-panel-body">
                 <!-- Search -->
                 <div class="mb-3">
-                    <label class="form-label small fw-semibold text-muted mb-1" style="font-size:.68rem;text-transform:uppercase;letter-spacing:.5px">Search</label>
+                    <label class="form-label small fw-semibold mb-1" style="font-size:.68rem;text-transform:uppercase;letter-spacing:.5px">Search</label>
                     <input id="hub-search" type="text" class="form-control form-control-sm"
                            placeholder="Email, subject, snippet…" style="border-radius:0" />
                 </div>
@@ -130,7 +130,7 @@
                 <p class="text-muted small mb-3">Set criteria on the left, then click any view to open it pre-filtered.</p>
 
                 <!-- Senders -->
-                <div class="mb-1" style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#868e96">Senders</div>
+                <div class="mb-1" style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#333">Senders</div>
                 <div class="hub-launch-grid mb-3">
                     <button class="hub-btn" onclick="launch('/Sender/Index')">
                         <i class="fas fa-users"></i>
@@ -150,7 +150,7 @@
                 </div>
 
                 <!-- Messages -->
-                <div class="mb-1" style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#868e96">Messages</div>
+                <div class="mb-1" style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#333">Messages</div>
                 <div class="hub-launch-grid mb-3">
                     <button class="hub-btn" onclick="launch('/Message/CeaReports')">
                         <i class="fas fa-file-alt"></i>
@@ -175,7 +175,7 @@
                 </div>
 
                 <!-- Tools -->
-                <div class="mb-1" style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#868e96">Tools</div>
+                <div class="mb-1" style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#333">Tools</div>
                 <div class="hub-launch-grid">
                     <button class="hub-btn" onclick="window.location='/GmailIngest'">
                         <i class="fas fa-download"></i>
