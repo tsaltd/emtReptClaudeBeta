@@ -3,6 +3,7 @@
 <table class="msg-table">
     <thead>
         <tr>
+            <th style="width:28px"></th>
             <th class="col-date">Date</th>
             <th class="col-subject">Subject</th>
         </tr>
@@ -10,12 +11,12 @@
     <tbody>
         @if (!Model.Messages.Any())
         {
-            <tr class="msg-empty"><td colspan="2">No messages match your filters.</td></tr>
+            <tr class="msg-empty"><td colspan="3">No messages match your filters.</td></tr>
         }
         @foreach (var senderGroup in Model.Messages.GroupBy(m => new { m.SenderId, m.EmailAddress, m.RatingName, m.ColorCode }))
         {
             <tr class="msg-cea">
-                <td colspan="2">
+                <td colspan="3">
                     <span class="msg-cea-pill" style="background-color:@(senderGroup.Key.ColorCode ?? "#adb5bd")">
                         <a href="/Sender/Detail/@senderGroup.Key.SenderId" class="msg-cea-link">@senderGroup.Key.EmailAddress</a>
                         <span class="msg-cea-count">@senderGroup.Count() msg</span>
@@ -31,18 +32,24 @@
                 if (string.IsNullOrWhiteSpace(rawDisplay)) rawDisplay = "—";
 
                 <tr class="msg-raw">
-                    <td colspan="2">@rawDisplay</td>
+                    <td colspan="3">@rawDisplay</td>
                 </tr>
 
                 @foreach (var subjectGroup in rawGroup.GroupBy(m => m.Subject))
                 {
                     <tr class="msg-subject">
-                        <td colspan="2">&#8226;&nbsp;@(subjectGroup.Key ?? "—")</td>
+                        <td colspan="3">&#8226;&nbsp;@(subjectGroup.Key ?? "—")</td>
                     </tr>
 
                     @foreach (var m in subjectGroup.Where(m => !string.IsNullOrWhiteSpace(m.Snippet) || !string.IsNullOrWhiteSpace(m.InternalDate)))
                     {
                         <tr class="msg-leaf">
+                            <td>
+                                <button type="button"
+                                        class="star-btn @(m.IsPriority ? "starred" : "")"
+                                        data-gmail-id="@m.GmailMessageId"
+                                        title="@(m.IsPriority ? "Remove priority" : "Mark priority")">★</button>
+                            </td>
                             <td>@m.DisplayDate</td>
                             <td class="cell-snippet">@m.Snippet</td>
                         </tr>

@@ -139,13 +139,15 @@ public class RunService : IRunService
 
 public class MessageService : IMessageService
 {
-    private readonly IMessageRepository _msgRepo;
-    private readonly IRatingRepository  _ratingRepo;
+    private readonly IMessageRepository      _msgRepo;
+    private readonly IRatingRepository       _ratingRepo;
+    private readonly IPriorityMessageService _priorityService;
 
-    public MessageService(IMessageRepository msgRepo, IRatingRepository ratingRepo)
+    public MessageService(IMessageRepository msgRepo, IRatingRepository ratingRepo, IPriorityMessageService priorityService)
     {
-        _msgRepo    = msgRepo;
-        _ratingRepo = ratingRepo;
+        _msgRepo         = msgRepo;
+        _ratingRepo      = ratingRepo;
+        _priorityService = priorityService;
     }
 
     public async Task<MessageSearchViewModel> SearchAsync(MessageSearchViewModel filters)
@@ -158,6 +160,9 @@ public class MessageService : IMessageService
         var total = await _msgRepo.CountAsync(
             filters.SenderId, filters.SearchTerm,
             filters.DateFrom, filters.DateTo, filters.RatingFilter, filters.StatusFilter);
+
+        var priorityIds = await _priorityService.GetAllIdsAsync();
+        var prioritySet = priorityIds.ToHashSet();
 
         var ratings = await _ratingRepo.GetAllAsync();
 
@@ -174,7 +179,8 @@ public class MessageService : IMessageService
             InternalDate   = m.InternalDate,
             FromRaw        = m.FromRaw,
             GmailMessageId = m.GmailMessageId,
-            ThreadId       = m.ThreadId
+            ThreadId       = m.ThreadId,
+            IsPriority     = m.GmailMessageId != null && prioritySet.Contains(m.GmailMessageId)
         });
 
         filters.TotalCount = total;
@@ -233,17 +239,19 @@ public class MessageService : IMessageService
 
 public class SenderService : ISenderService
 {
-    private readonly ISenderRepository  _senderRepo;
-    private readonly IMessageRepository _msgRepo;
-    private readonly IRatingRepository  _ratingRepo;
-    private readonly AppDbContext       _db;
+    private readonly ISenderRepository         _senderRepo;
+    private readonly IMessageRepository        _msgRepo;
+    private readonly IRatingRepository         _ratingRepo;
+    private readonly AppDbContext              _db;
+    private readonly IPriorityMessageService   _priorityService;
 
-    public SenderService(ISenderRepository senderRepo, IMessageRepository msgRepo, IRatingRepository ratingRepo, AppDbContext db)
+    public SenderService(ISenderRepository senderRepo, IMessageRepository msgRepo, IRatingRepository ratingRepo, AppDbContext db, IPriorityMessageService priorityService)
     {
-        _senderRepo = senderRepo;
-        _msgRepo    = msgRepo;
-        _ratingRepo = ratingRepo;
-        _db         = db;
+        _senderRepo      = senderRepo;
+        _msgRepo         = msgRepo;
+        _ratingRepo      = ratingRepo;
+        _db              = db;
+        _priorityService = priorityService;
     }
 
     public async Task<SenderSearchViewModel> SearchAsync(SenderSearchViewModel filters)
@@ -286,8 +294,10 @@ public class SenderService : ISenderService
         var sender = await _senderRepo.GetByIdAsync(senderId);
         if (sender == null) return null;
 
-        var allMessages = await _msgRepo.SearchAsync(
+        var allMessages  = await _msgRepo.SearchAsync(
             senderId, null, null, null, null, null, 1, int.MaxValue);
+        var priorityIds  = await _priorityService.GetAllIdsAsync();
+        var prioritySet  = priorityIds.ToHashSet();
 
         var ratings = await _ratingRepo.GetAllAsync();
 
@@ -299,16 +309,18 @@ public class SenderService : ISenderService
                 FromRaw  = g.Key,
                 Messages = g.OrderByDescending(m => m.InternalDate).Select(m => new MessageRowViewModel
                 {
-                    MessageId    = m.MessageId,
-                    RunId        = m.RunId,
-                    SenderId     = m.SenderId,
-                    EmailAddress = m.EmailAddress,
-                    RatingName   = m.RatingName,
-                    ColorCode    = m.ColorCode,
-                    Subject      = m.Subject,
-                    Snippet      = m.Snippet,
-                    InternalDate = m.InternalDate,
-                    FromRaw      = m.FromRaw
+                    MessageId      = m.MessageId,
+                    RunId          = m.RunId,
+                    SenderId       = m.SenderId,
+                    EmailAddress   = m.EmailAddress,
+                    RatingName     = m.RatingName,
+                    ColorCode      = m.ColorCode,
+                    Subject        = m.Subject,
+                    Snippet        = m.Snippet,
+                    InternalDate   = m.InternalDate,
+                    FromRaw        = m.FromRaw,
+                    GmailMessageId = m.GmailMessageId,
+                    IsPriority     = m.GmailMessageId != null && prioritySet.Contains(m.GmailMessageId)
                 }).ToList()
             });
 
@@ -339,8 +351,10 @@ public class SenderService : ISenderService
         var sender = await _senderRepo.GetByIdAsync(senderId);
         if (sender == null) return null;
 
-        var allMessages = await _msgRepo.SearchAsync(
+        var allMessages  = await _msgRepo.SearchAsync(
             senderId, null, null, null, null, null, 1, int.MaxValue);
+        var priorityIds  = await _priorityService.GetAllIdsAsync();
+        var prioritySet  = priorityIds.ToHashSet();
 
         var ratings = await _ratingRepo.GetAllAsync();
 
@@ -359,16 +373,18 @@ public class SenderService : ISenderService
                 FromRaw  = g.Key,
                 Messages = g.OrderByDescending(m => m.InternalDate).Select(m => new MessageRowViewModel
                 {
-                    MessageId    = m.MessageId,
-                    RunId        = m.RunId,
-                    SenderId     = m.SenderId,
-                    EmailAddress = m.EmailAddress,
-                    RatingName   = m.RatingName,
-                    ColorCode    = m.ColorCode,
-                    Subject      = m.Subject,
-                    Snippet      = m.Snippet,
-                    InternalDate = m.InternalDate,
-                    FromRaw      = m.FromRaw
+                    MessageId      = m.MessageId,
+                    RunId          = m.RunId,
+                    SenderId       = m.SenderId,
+                    EmailAddress   = m.EmailAddress,
+                    RatingName     = m.RatingName,
+                    ColorCode      = m.ColorCode,
+                    Subject        = m.Subject,
+                    Snippet        = m.Snippet,
+                    InternalDate   = m.InternalDate,
+                    FromRaw        = m.FromRaw,
+                    GmailMessageId = m.GmailMessageId,
+                    IsPriority     = m.GmailMessageId != null && prioritySet.Contains(m.GmailMessageId)
                 }).ToList()
             });
 
