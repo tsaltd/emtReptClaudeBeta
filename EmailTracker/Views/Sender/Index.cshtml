@@ -62,6 +62,14 @@
 
     FilterBar.onChange = function() { refreshSenders(1); };
 
+    // Apply stored filter on initial page load
+    (function() {
+        var f = FilterBar.getValues();
+        if (f.ratingFilter || f.statusFilter || f.dateFrom || f.dateTo) {
+            refreshSenders(1);
+        }
+    })();
+
     $(document).on('click', '.page-btn', function() {
         refreshSenders(parseInt($(this).data('page')));
     });
@@ -92,6 +100,9 @@
                 $('#toast-msg').text(res.success ? 'Rating saved: ' + res.ratingName : 'Error: ' + res.message);
                 $('#rating-toast').toggleClass('bg-success text-white', res.success).toggleClass('bg-danger text-white', !res.success);
                 toast.show();
+                if (res.success && FilterBar.getValues().ratingFilter) {
+                    setTimeout(function() { refreshSenders(1); }, 900);
+                }
             },
             error: function () {
                 $('#toast-msg').text('Network error — rating not saved.');

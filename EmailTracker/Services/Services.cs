@@ -341,7 +341,8 @@ public class SenderService : ISenderService
             {
                 RatingId   = r.RatingId,
                 RatingName = r.RatingName,
-                SortOrder  = r.SortOrder
+                SortOrder  = r.SortOrder,
+                ColorCode  = r.ColorCode
             })
         };
     }

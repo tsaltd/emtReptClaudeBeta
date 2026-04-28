@@ -205,12 +205,14 @@
     });
 
     let msgTimer, currentPage = 1;
+    var senderId = @(Model.SenderId?.ToString() ?? "null");
 
     function refresh(page) {
         currentPage = page || 1;
         const f = FilterBar.getValues();
         const params = $.param({
             searchTerm:   $('#f-search').val(),
+            senderId:     senderId,
             ratingFilter: f.ratingFilter,
             statusFilter: f.statusFilter,
             dateFrom:     f.dateFrom,
@@ -230,6 +232,14 @@
     });
 
     FilterBar.onChange = function() { refresh(1); };
+
+    // Apply stored filter on initial page load (explicit call, more reliable than DOMContentLoaded)
+    (function() {
+        var f = FilterBar.getValues();
+        if (f.ratingFilter || f.statusFilter || f.dateFrom || f.dateTo) {
+            refresh(1);
+        }
+    })();
 
     $(document).on('click', '.page-btn', function() {
         refresh(parseInt($(this).data('page')));

@@ -167,6 +167,9 @@
             flex-direction: row; gap: 5px; align-items: center;
         }
         .rating-picker-panel.open { display: flex; }
+        /* Panel background is click-transparent so clicks pass through to rows beneath */
+        .rating-picker-panel { pointer-events: none; }
+        .rating-picker-panel .rating-swatch { pointer-events: auto; }
         .rating-swatch {
             width: 24px; height: 24px; border-radius: 3px;
             cursor: pointer; border: 2px solid rgba(0,0,0,.15);
@@ -174,6 +177,33 @@
         }
         .rating-swatch:hover { border-color: rgba(0,0,0,.55); transform: scale(1.15); }
         .rating-swatch.active { border-color: #000; }
+
+        /* ── Global filter strip ── */
+        #global-filter-strip {
+            background: #e8f0fe; border-bottom: 1px solid #c5d4f5;
+            padding: .3rem 1.5rem; display: none;
+            align-items: center; gap: .5rem; flex-wrap: wrap; font-size: .78rem;
+        }
+        .gf-label {
+            font-weight: 700; color: #444; text-transform: uppercase;
+            font-size: .65rem; letter-spacing: .4px; white-space: nowrap; flex-shrink: 0;
+        }
+        .gf-pill {
+            display: inline-flex; align-items: center; gap: .3rem;
+            background: #fff; border: 1px solid #c5d4f5; border-radius: 999px;
+            padding: .1rem .5rem; color: #333; font-weight: 600;
+            white-space: nowrap; font-size: .72rem;
+        }
+        .gf-swatch {
+            width: 10px; height: 10px; border-radius: 2px;
+            display: inline-block; flex-shrink: 0;
+        }
+        #gf-clear {
+            margin-left: auto; background: none; border: 1px solid #aab4e0;
+            border-radius: 4px; padding: .15rem .5rem; font-size: .72rem;
+            color: #555; cursor: pointer; white-space: nowrap;
+        }
+        #gf-clear:hover { background: #f0f0f0; }
     </style>
     @await RenderSectionAsync("Styles", required: false)
 </head>
@@ -240,6 +270,11 @@
             <small class="text-muted">@DateTime.Now.ToString("dddd, MMMM d, yyyy")</small>
         </div>
     </header>
+    <div id="global-filter-strip">
+        <span class="gf-label">Active Filter:</span>
+        <div id="gf-pills" style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap"></div>
+        <button id="gf-clear">✕ Clear All</button>
+    </div>
     <main id="content">
         @RenderBody()
     </main>
@@ -281,6 +316,10 @@
                         .text(nowRated ? '✓' : '○')
                         .attr('title', res.statusName)
                         .data('next-status-id', nowRated ? 1 : 2);
+                    if (typeof FilterBar !== 'undefined' && typeof FilterBar.onChange === 'function'
+                            && FilterBar.getValues().statusFilter) {
+                        setTimeout(function() { FilterBar.onChange(); }, 900);
+                    }
                 }
             }
         });
@@ -325,6 +364,53 @@
             $(targetSelector).html(html);
         });
     }
+
+    // ── Global filter strip ──────────────────────────────────────
+    (function () {
+        var LS_KEY   = 'et-filter';
+        var strip    = document.getElementById('global-filter-strip');
+        var pills    = document.getElementById('gf-pills');
+        var clearBtn = document.getElementById('gf-clear');
+
+        function renderStrip(v) {
+            if (!v || !(v.statusFilter || v.dateFrom || v.dateTo || v.ratingFilter || v.priorityOnly)) {
+                strip.style.display = 'none';
+                return;
+            }
+            var html = '';
+            if (v.statusFilter) {
+                html += '<span class="gf-pill">Status: ' + (v.statusFilter === 'OPEN' ? '○ Open' : '✓ Rated') + '</span>';
+            }
+            if (v.dateFrom || v.dateTo) {
+                html += '<span class="gf-pill">Date: ' + (v.dateFrom || '…') + ' → ' + (v.dateTo || '…') + '</span>';
+            }
+            if (v.ratingFilter) {
+                var colors = v.ratingColors || {};
+                v.ratingFilter.split(',').filter(function(x){return x;}).forEach(function(name) {
+                    html += '<span class="gf-pill"><span class="gf-swatch" style="background:' + (colors[name] || '#adb5bd') + '"></span>' + name + '</span>';
+                });
+            }
+            if (v.priorityOnly) {
+                html += '<span class="gf-pill">★ Priority</span>';
+            }
+            pills.innerHTML = html;
+            strip.style.display = 'flex';
+        }
+
+        // Init from localStorage on every page
+        try { renderStrip(JSON.parse(localStorage.getItem(LS_KEY))); } catch(e) {}
+
+        // Real-time updates from FilterBar (same-page changes)
+        window.addEventListener('et-filter-changed', function(e) { renderStrip(e.detail); });
+
+        // Clear All: remove state, hide strip, trigger FilterBar clear if present
+        clearBtn.addEventListener('click', function() {
+            try { localStorage.removeItem(LS_KEY); } catch(e) {}
+            renderStrip(null);
+            var fbClear = document.getElementById('fb-clear');
+            if (fbClear) fbClear.click();
+        });
+    })();
 </script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>

@@ -63,7 +63,7 @@
         <div class="hub-stat">
             <div class="hub-stat-icon"><i class="fas fa-envelope"></i></div>
             <div>
-                <div class="hub-stat-val">@Model.TotalMessages.ToString("N0")</div>
+                <div class="hub-stat-val" id="stat-messages">@Model.TotalMessages.ToString("N0")</div>
                 <div class="hub-stat-lbl">Messages</div>
             </div>
         </div>
@@ -72,7 +72,7 @@
         <div class="hub-stat">
             <div class="hub-stat-icon"><i class="fas fa-users"></i></div>
             <div>
-                <div class="hub-stat-val">@Model.TotalSenders.ToString("N0")</div>
+                <div class="hub-stat-val" id="stat-senders">@Model.TotalSenders.ToString("N0")</div>
                 <div class="hub-stat-lbl">Senders</div>
             </div>
         </div>
@@ -218,8 +218,31 @@ function launch(url, useFilters) {
 
 $('#hub-reset').on('click', function () {
     $('#hub-search').val('');
-    // Trigger _FilterBar clear button
     document.getElementById('fb-clear').click();
 });
+
+function refreshStats() {
+    var f = FilterBar.getValues();
+    var params = $.param({
+        ratingFilter: f.ratingFilter,
+        statusFilter: f.statusFilter,
+        dateFrom:     f.dateFrom,
+        dateTo:       f.dateTo
+    });
+    $.getJSON('/Home/FilteredStats?' + params, function(r) {
+        if (r.messages !== null) $('#stat-messages').text(Number(r.messages).toLocaleString());
+        $('#stat-senders').text(Number(r.senders).toLocaleString());
+    });
+}
+
+FilterBar.onChange = function() { refreshStats(); };
+
+// Apply stored filter on initial load
+(function() {
+    var f = FilterBar.getValues();
+    if (f.ratingFilter || f.statusFilter || f.dateFrom || f.dateTo) {
+        refreshStats();
+    }
+})();
 </script>
 }

@@ -3,6 +3,11 @@
     var selectedList = (Model.SelectedRatings ?? "")
         .Split(',', StringSplitOptions.RemoveEmptyEntries)
         .ToHashSet();
+    var serverHasValues = !string.IsNullOrEmpty(Model.SelectedRatings)
+        || !string.IsNullOrEmpty(Model.StatusFilter)
+        || !string.IsNullOrEmpty(Model.DateFrom)
+        || !string.IsNullOrEmpty(Model.DateTo)
+        || Model.PriorityOnly;
 }
 
 <style>
@@ -126,6 +131,7 @@
                 <span class="fb-swatch @(selectedList.Contains(r.RatingName) ? "fb-active" : "")"
                       style="background:@r.ColorCode"
                       data-rating="@r.RatingName"
+                      data-color="@r.ColorCode"
                       title="@r.RatingName"></span>
             }
         </div>
@@ -151,9 +157,87 @@
 
 <script>
 (function () {
+    var LS_KEY = 'et-filter';
+    var serverHasValues = @(serverHasValues ? "true" : "false");
+
     // ── State ────────────────────────────────────────────────────
     var selectedRatings = @Html.Raw(
         "[" + string.Join(",", selectedList.Select(r => $"\"{r}\"")) + "]");
+
+    var priorityBtn = document.getElementById('fb-priority');
+
+    // ── Rating color map ─────────────────────────────────────────
+    function getRatingColors() {
+        var map = {};
+        document.querySelectorAll('.fb-swatch').forEach(function(sw) {
+            map[sw.dataset.rating] = sw.dataset.color || '';
+        });
+        return map;
+    }
+
+    // ── Save to localStorage ──────────────────────────────────────
+    function save() {
+        var v = FilterBar.getValues();
+        var hasFilter = v.statusFilter || v.dateFrom || v.dateTo || v.ratingFilter || v.priorityOnly;
+        if (hasFilter) {
+            v.ratingColors = getRatingColors();
+            try { localStorage.setItem(LS_KEY, JSON.stringify(v)); } catch(e) {}
+        } else {
+            try { localStorage.removeItem(LS_KEY); } catch(e) {}
+        }
+        window.dispatchEvent(new CustomEvent('et-filter-changed', { detail: hasFilter ? v : null }));
+    }
+
+    // ── Restore from localStorage ─────────────────────────────────
+    function restore() {
+        var raw;
+        try { raw = localStorage.getItem(LS_KEY); } catch(e) {}
+        if (!raw) return;
+        var v;
+        try { v = JSON.parse(raw); } catch(e) { return; }
+
+        var fromEl = document.getElementById('fb-date-from');
+        var toEl   = document.getElementById('fb-date-to');
+        if (fromEl && v.dateFrom) fromEl.value = v.dateFrom;
+        if (toEl   && v.dateTo)   toEl.value   = v.dateTo;
+
+        if (v.statusFilter !== undefined) {
+            document.querySelectorAll('.fb-status-btn').forEach(function(b) {
+                b.classList.remove('fb-active-all', 'fb-active-open', 'fb-active-rated');
+            });
+            var val = v.statusFilter;
+            var target = document.querySelector('.fb-status-btn[data-value="' + val + '"]');
+            if (target) {
+                if      (val === '')      target.classList.add('fb-active-all');
+                else if (val === 'OPEN')  target.classList.add('fb-active-open');
+                else if (val === 'RATED') target.classList.add('fb-active-rated');
+            } else {
+                var allStatus = document.querySelector('.fb-status-btn[data-value=""]');
+                if (allStatus) allStatus.classList.add('fb-active-all');
+            }
+        }
+
+        if (v.ratingFilter !== undefined) {
+            selectedRatings = v.ratingFilter ? v.ratingFilter.split(',').filter(function(x){return x;}) : [];
+            document.querySelectorAll('.fb-swatch').forEach(function(sw) {
+                sw.classList.toggle('fb-active', selectedRatings.indexOf(sw.dataset.rating) >= 0);
+            });
+            updateRatingAll();
+        }
+
+        if (v.priorityOnly && priorityBtn) {
+            priorityBtn.classList.add('fb-active');
+        }
+
+        window.dispatchEvent(new CustomEvent('et-filter-changed', { detail: v }));
+
+        // Trigger data refresh after page Scripts section has run and set FilterBar.onChange
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof FilterBar.onChange === 'function') {
+                FilterBar.onChange(FilterBar.getValues());
+            }
+        });
+    }
 
     // ── Rating swatches ──────────────────────────────────────────
     function updateRatingAll() {
@@ -204,7 +288,6 @@
     });
 
     // ── Priority ─────────────────────────────────────────────────
-    var priorityBtn = document.getElementById('fb-priority');
     if (priorityBtn) {
         priorityBtn.addEventListener('click', function () {
             this.classList.toggle('fb-active');
@@ -246,8 +329,16 @@
         },
         onChange: null,
         _emit: function () {
+            save();
             if (typeof this.onChange === 'function') this.onChange(this.getValues());
         }
     };
+
+    // ── Init ─────────────────────────────────────────────────────
+    if (serverHasValues) {
+        save();     // URL params present → write as new global state
+    } else {
+        restore();  // No URL params → restore from localStorage
+    }
 })();
 </script>

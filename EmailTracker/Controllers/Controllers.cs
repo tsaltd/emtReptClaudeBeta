@@ -9,15 +9,18 @@ namespace EmailTracker.Controllers;
 // ── Home / Dashboard ─────────────────────────────────────────────
 public class HomeController : Controller
 {
-    private readonly IRunService    _runService;
-    private readonly ISenderService _senderService;
-    private readonly IRatingService _ratingService;
+    private readonly IRunService     _runService;
+    private readonly ISenderService  _senderService;
+    private readonly IRatingService  _ratingService;
+    private readonly IMessageService _messageService;
 
-    public HomeController(IRunService runService, ISenderService senderService, IRatingService ratingService)
+    public HomeController(IRunService runService, ISenderService senderService,
+                          IRatingService ratingService, IMessageService messageService)
     {
-        _runService    = runService;
-        _senderService = senderService;
-        _ratingService = ratingService;
+        _runService     = runService;
+        _senderService  = senderService;
+        _ratingService  = ratingService;
+        _messageService = messageService;
     }
 
     public async Task<IActionResult> Index()
@@ -36,6 +39,37 @@ public class HomeController : Controller
         };
 
         return View(vm);
+    }
+
+    // GET /Home/FilteredStats — AJAX: returns filtered sender + message counts
+    public async Task<IActionResult> FilteredStats(
+        string? ratingFilter, string? statusFilter, string? dateFrom, string? dateTo)
+    {
+        var hasFilter = !string.IsNullOrEmpty(ratingFilter) || !string.IsNullOrEmpty(statusFilter)
+                     || !string.IsNullOrEmpty(dateFrom)    || !string.IsNullOrEmpty(dateTo);
+
+        if (!hasFilter)
+        {
+            var all = await _senderService.SearchAsync(new SenderSearchViewModel { Page = 1, PageSize = 1 });
+            return Json(new { senders = all.TotalCount, messages = (int?)null });
+        }
+
+        var senderResult  = await _senderService.SearchAsync(new SenderSearchViewModel
+        {
+            RatingFilter = ratingFilter,
+            StatusFilter = statusFilter,
+            Page = 1, PageSize = 1
+        });
+        var messageResult = await _messageService.SearchAsync(new MessageSearchViewModel
+        {
+            RatingFilter = ratingFilter,
+            StatusFilter = statusFilter,
+            DateFrom     = dateFrom,
+            DateTo       = dateTo,
+            Page = 1, PageSize = 1
+        });
+
+        return Json(new { senders = senderResult.TotalCount, messages = messageResult.TotalCount });
     }
 }
 

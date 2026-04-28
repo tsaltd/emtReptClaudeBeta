@@ -210,12 +210,14 @@
     string RatingParam()   => string.IsNullOrEmpty(Model.RatingFilter) ? "" : $"&ratingFilter={Uri.EscapeDataString(Model.RatingFilter)}";
     string StatusParam()   => string.IsNullOrEmpty(Model.StatusFilter) ? "" : $"&statusFilter={Uri.EscapeDataString(Model.StatusFilter)}";
     string PriorityParam() => Model.PriorityOnly ? "&priorityOnly=true" : "";
+    string DateParam()     => (string.IsNullOrEmpty(Model.DateFrom) ? "" : $"&dateFrom={Uri.EscapeDataString(Model.DateFrom)}")
+                            + (string.IsNullOrEmpty(Model.DateTo)   ? "" : $"&dateTo={Uri.EscapeDataString(Model.DateTo)}");
 
     string SortUrl(string by, bool asc) =>
-        $"/Message/Grouped?sortBy={by}&sortAsc={asc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{StatusParam()}{PriorityParam()}&page=1&pageSize={Model.PageSize}";
+        $"/Message/Grouped?sortBy={by}&sortAsc={asc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{StatusParam()}{PriorityParam()}{DateParam()}&page=1&pageSize={Model.PageSize}";
 
     string PageUrl(int p) =>
-        $"/Message/Grouped?sortBy={Model.SortBy}&sortAsc={Model.SortAsc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{StatusParam()}{PriorityParam()}&page={p}&pageSize={Model.PageSize}";
+        $"/Message/Grouped?sortBy={Model.SortBy}&sortAsc={Model.SortAsc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{StatusParam()}{PriorityParam()}{DateParam()}&page={p}&pageSize={Model.PageSize}";
 
     string BrowseUrl(int senderId) =>
         $"/Message/Browse?senderId={senderId}";
@@ -228,6 +230,8 @@
     <input type="hidden" name="pageSize"     value="@Model.PageSize" />
     <input type="hidden" name="priorityOnly" id="h-priority" value="@Model.PriorityOnly.ToString().ToLower()" />
     <input type="hidden" name="statusFilter" id="h-status"   value="@Model.StatusFilter" />
+    <input type="hidden" name="dateFrom"     id="h-date-from" value="@Model.DateFrom" />
+    <input type="hidden" name="dateTo"       id="h-date-to"   value="@Model.DateTo" />
 
     <div>
         <div class="f-label">Search CEA</div>
@@ -244,6 +248,18 @@
                 <option value="@r.RatingName" selected="@(Model.RatingFilter == r.RatingName)">@r.RatingName</option>
             }
         </select>
+    </div>
+
+    <div>
+        <div class="f-label">Date From</div>
+        <input type="date" id="ui-date-from" class="form-control" style="width:140px"
+               value="@Model.DateFrom" />
+    </div>
+
+    <div>
+        <div class="f-label">Date To</div>
+        <input type="date" id="ui-date-to" class="form-control" style="width:140px"
+               value="@Model.DateTo" />
     </div>
 
     <div>
@@ -446,9 +462,19 @@ document.addEventListener('click', function (e) {
     .then(data => { btn.classList.toggle('active', data.isPriority); });
 });
 
+// Sync date pickers to hidden inputs before form submit
+document.getElementById('ui-date-from').addEventListener('change', function () {
+    document.getElementById('h-date-from').value = this.value;
+});
+document.getElementById('ui-date-to').addEventListener('change', function () {
+    document.getElementById('h-date-to').value = this.value;
+});
+
 // Status filter buttons
 document.querySelectorAll('.grp-status-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
+        document.getElementById('h-date-from').value = document.getElementById('ui-date-from').value;
+        document.getElementById('h-date-to').value   = document.getElementById('ui-date-to').value;
         document.getElementById('h-status').value = this.dataset.value;
         this.closest('form').submit();
     });
@@ -456,6 +482,8 @@ document.querySelectorAll('.grp-status-btn').forEach(function (btn) {
 
 // Priority filter toggle — flip hidden field and submit form
 document.getElementById('btn-priority-toggle').addEventListener('click', function () {
+    document.getElementById('h-date-from').value = document.getElementById('ui-date-from').value;
+    document.getElementById('h-date-to').value   = document.getElementById('ui-date-to').value;
     var h = document.getElementById('h-priority');
     h.value = h.value === 'true' ? 'false' : 'true';
     this.closest('form').submit();
