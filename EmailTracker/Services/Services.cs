@@ -34,6 +34,8 @@ public interface ISenderService
     Task<SenderSearchViewModel>  SearchAsync(SenderSearchViewModel filters);
     Task<SenderDetailViewModel?>  GetDetailAsync(int senderId);
     Task<SenderSummaryPageViewModel?> GetSummaryAsync(int senderId, int page = 1, int pageSize = 10, bool sortAsc = true);
+    Task<IEnumerable<SenderSummaryViewModel>> GetSendersForRunAsync(int runId);
+    Task<SenderPeriodListViewModel> GetForPeriodAsync(string? dateFrom, string? dateTo);
 
     /// <summary>
     /// Extracts the canonical email address from a raw From header.
@@ -287,6 +289,87 @@ public class SenderService : ISenderService
         });
 
         return filters;
+    }
+
+    public async Task<IEnumerable<SenderSummaryViewModel>> GetSendersForRunAsync(int runId)
+    {
+        var counts = await _db.Messages
+            .Where(m => m.RunId == runId)
+            .GroupBy(m => m.SenderId)
+            .Select(g => new { SenderId = g.Key, MsgCount = g.Count() })
+            .ToListAsync();
+
+        if (counts.Count == 0)
+            return [];
+
+        var countBySenderId = counts.ToDictionary(x => x.SenderId, x => x.MsgCount);
+        var senderIds = countBySenderId.Keys.ToList();
+
+        var senderRows = await _db.VSenderWithRatings
+            .Where(s => senderIds.Contains(s.SenderId))
+            .ToListAsync();
+
+        return senderRows
+            .Select(s => new SenderSummaryViewModel
+            {
+                SenderId = s.SenderId,
+                EmailAddress = s.EmailAddress,
+                DisplayName = s.DisplayName,
+                MsgCount = countBySenderId.TryGetValue(s.SenderId, out var c) ? c : 0,
+                RatingName = s.RatingName,
+                ColorCode = s.ColorCode,
+                RatingId = s.RatingId,
+                StatusId = s.StatusId,
+                StatusName = s.StatusName,
+                FirstSeen = s.FirstSeen,
+                LastSeen = s.LastSeen
+            })
+            .OrderByDescending(s => s.MsgCount)
+            .ThenBy(s => s.EmailAddress)
+            .ToList();
+    }
+
+    public async Task<SenderPeriodListViewModel> GetForPeriodAsync(string? dateFrom, string? dateTo)
+    {
+        var query = _db.VMessageWithSenders.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(dateFrom))
+            query = query.Where(m => m.InternalDate != null && string.Compare(m.InternalDate, dateFrom) >= 0);
+
+        if (!string.IsNullOrWhiteSpace(dateTo))
+            query = query.Where(m => m.InternalDate != null && string.Compare(m.InternalDate, dateTo) <= 0);
+
+        var senderIds = await query
+            .Select(m => m.SenderId)
+            .Distinct()
+            .ToListAsync();
+
+        var ratingSort = await _db.Ratings
+            .Select(r => new { r.RatingId, r.SortOrder })
+            .ToDictionaryAsync(r => r.RatingId, r => r.SortOrder);
+
+        var rows = (await _db.VSenderWithRatings
+            .Where(s => senderIds.Contains(s.SenderId))
+            .Select(s => new SenderPeriodRowViewModel
+            {
+                SenderId = s.SenderId,
+                EmailAddress = s.EmailAddress,
+                RatingId = s.RatingId,
+                RatingName = s.RatingName,
+                ColorCode = s.ColorCode
+            })
+            .ToListAsync())
+            .OrderBy(s => ratingSort.TryGetValue(s.RatingId, out var sortOrder) && sortOrder > 0 ? sortOrder : int.MaxValue - 1)
+            .ThenBy(s => s.RatingId)
+            .ThenBy(s => s.EmailAddress, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return new SenderPeriodListViewModel
+        {
+            DateFrom = dateFrom,
+            DateTo = dateTo,
+            Senders = rows
+        };
     }
 
     public async Task<SenderDetailViewModel?> GetDetailAsync(int senderId)

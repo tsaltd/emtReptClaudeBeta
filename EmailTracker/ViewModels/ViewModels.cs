@@ -197,6 +197,23 @@ public class SenderSummaryPageViewModel
     public int  NextPage    => Page + 1;
 }
 
+public class SenderPeriodRowViewModel
+{
+    public int SenderId { get; set; }
+    public string EmailAddress { get; set; } = string.Empty;
+    public int RatingId { get; set; }
+    public string RatingName { get; set; } = string.Empty;
+    public string? ColorCode { get; set; }
+}
+
+public class SenderPeriodListViewModel
+{
+    public string? DateFrom { get; set; }
+    public string? DateTo { get; set; }
+    public IEnumerable<SenderPeriodRowViewModel> Senders { get; set; } = [];
+    public int TotalCount => Senders.Count();
+}
+
 // ════════════════════════════════════════════════════════════════
 //  SENDER BROWSE ViewModel  (single-record navigator)
 // ════════════════════════════════════════════════════════════════
@@ -256,6 +273,9 @@ public class CeaGroupViewModel
 
 public class MessageGroupedViewModel
 {
+    public int?    SenderId     { get; set; }
+    public string? SenderIdsCsv { get; set; }
+    public int     CurrentRunId  { get; set; }
     public string? SearchTerm   { get; set; }
     public string? RatingFilter { get; set; }
     public string? StatusFilter { get; set; }   // "" | "OPEN" | "RATED"
@@ -270,6 +290,10 @@ public class MessageGroupedViewModel
     public int     TotalPages   => (int)Math.Ceiling((double)TotalSenders / PageSize);
     public bool    HasPrev      => Page > 1;
     public bool    HasNext      => Page < TotalPages;
+
+    public IEnumerable<SenderSummaryViewModel> AvailableRunSenders { get; set; } = [];
+    public IEnumerable<int> SelectedSenderIds { get; set; } = [];
+    public string SelectedSenderIdsCsv => string.Join(",", SelectedSenderIds);
 
     public IEnumerable<CeaGroupViewModel>     CeaGroups        { get; set; } = [];
     public IEnumerable<RatingOptionViewModel> AvailableRatings { get; set; } = [];

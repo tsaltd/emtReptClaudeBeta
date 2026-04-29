@@ -129,9 +129,23 @@
 
                 <p class="text-muted small mb-3">Set criteria on the left, then click any view to open it pre-filtered.</p>
 
+                <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
+                    <span class="small text-muted">Sender list template:</span>
+                    <select id="hub-template-select" class="form-select form-select-sm" style="width:280px">
+                        <option value="">Use current selected rows</option>
+                    </select>
+                    <button type="button" id="hub-template-refresh" class="btn btn-sm btn-outline-secondary">Refresh</button>
+                    <span id="hub-template-info" class="small text-muted"></span>
+                </div>
+
                 <!-- Senders -->
                 <div class="mb-1" style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#333">Senders</div>
                 <div class="hub-launch-grid mb-3">
+                    <button class="hub-btn" onclick="launch('/Sender/Period')">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span class="hub-btn-label">Sender Period List</span>
+                        <span class="hub-btn-sub">date range · email · rating</span>
+                    </button>
                     <button class="hub-btn" onclick="launch('/Sender/Index')">
                         <i class="fas fa-users"></i>
                         <span class="hub-btn-label">Sender List</span>
@@ -197,7 +211,25 @@
 @section Scripts {
 <script>
 function launch(url, useFilters) {
+    var selectedSenderId = localStorage.getItem('selectedSenderId');
+    var selectedSenderIds = localStorage.getItem('selectedSenderIdsCsv');
+    var templateSelected = document.getElementById('hub-template-select')?.value || '';
+
+    if (templateSelected) {
+        var templates = readSenderTemplates();
+        var t = templates.find(function (x) { return x.name === templateSelected; });
+        if (t && t.senderIdsCsv) selectedSenderIds = t.senderIdsCsv;
+    }
+
     if (useFilters === false) {
+        if ((url === '/Message/Grouped' || url === '/Message/CeaReports') && selectedSenderIds) {
+            window.location = url + '?senderIds=' + encodeURIComponent(selectedSenderIds);
+            return;
+        }
+        if ((url === '/Message/Browse' || url === '/Message/Index' || url === '/Message/Grouped' || url === '/Message/CeaReports') && selectedSenderId) {
+            window.location = url + '?senderId=' + encodeURIComponent(selectedSenderId);
+            return;
+        }
         window.location = url;
         return;
     }
@@ -211,6 +243,11 @@ function launch(url, useFilters) {
     if (f.dateFrom)       params.dateFrom      = f.dateFrom;
     if (f.dateTo)         params.dateTo        = f.dateTo;
     if (f.priorityOnly)   params.priorityOnly  = 'true';
+    if ((url === '/Message/Grouped' || url === '/Message/CeaReports') && selectedSenderIds) {
+        params.senderIds = selectedSenderIds;
+    } else if ((url === '/Message/Index' || url === '/Message/Grouped' || url === '/Message/CeaReports' || url === '/Message/Browse') && selectedSenderId) {
+        params.senderId = selectedSenderId;
+    }
 
     var qs = $.param(params);
     window.location = url + (qs ? '?' + qs : '');
@@ -244,5 +281,48 @@ FilterBar.onChange = function() { refreshStats(); };
         refreshStats();
     }
 })();
+
+function readSenderTemplates() {
+    try {
+        var raw = localStorage.getItem('senderListTemplates');
+        var arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr : [];
+    } catch {
+        return [];
+    }
+}
+
+function renderHubTemplateSelect() {
+    var select = document.getElementById('hub-template-select');
+    var info = document.getElementById('hub-template-info');
+    if (!select) return;
+
+    var current = localStorage.getItem('selectedSenderListTemplateName') || '';
+    var templates = readSenderTemplates().sort(function (a, b) {
+        return String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' });
+    });
+
+    select.innerHTML = '<option value="">Use current selected rows</option>';
+    templates.forEach(function (t) {
+        var opt = document.createElement('option');
+        opt.value = t.name;
+        opt.textContent = t.name + ' (' + (t.count || 0) + ')';
+        if (t.name === current) opt.selected = true;
+        select.appendChild(opt);
+    });
+
+    if (info) {
+        info.textContent = current ? ('Active: ' + current) : 'No named list selected';
+    }
+}
+
+document.getElementById('hub-template-refresh')?.addEventListener('click', renderHubTemplateSelect);
+document.getElementById('hub-template-select')?.addEventListener('change', function () {
+    localStorage.setItem('selectedSenderListTemplateName', this.value || '');
+    var info = document.getElementById('hub-template-info');
+    if (info) info.textContent = this.value ? ('Active: ' + this.value) : 'No named list selected';
+});
+
+renderHubTemplateSelect();
 </script>
 }

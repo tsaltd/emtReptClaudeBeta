@@ -207,6 +207,8 @@
 }
 
 @{
+    string SenderListParam() => string.IsNullOrEmpty(Model.SenderIdsCsv) ? "" : $"&senderIds={Uri.EscapeDataString(Model.SenderIdsCsv)}";
+    string SenderParam()   => Model.SenderId.HasValue ? $"&senderId={Model.SenderId.Value}" : "";
     string RatingParam()   => string.IsNullOrEmpty(Model.RatingFilter) ? "" : $"&ratingFilter={Uri.EscapeDataString(Model.RatingFilter)}";
     string StatusParam()   => string.IsNullOrEmpty(Model.StatusFilter) ? "" : $"&statusFilter={Uri.EscapeDataString(Model.StatusFilter)}";
     string PriorityParam() => Model.PriorityOnly ? "&priorityOnly=true" : "";
@@ -214,14 +216,16 @@
                             + (string.IsNullOrEmpty(Model.DateTo)   ? "" : $"&dateTo={Uri.EscapeDataString(Model.DateTo)}");
 
     string SortUrl(string by, bool asc) =>
-        $"/Message/CeaReports?sortBy={by}&sortAsc={asc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{StatusParam()}{PriorityParam()}{DateParam()}&page=1&pageSize={Model.PageSize}";
+        $"/Message/CeaReports?sortBy={by}&sortAsc={asc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{SenderParam()}{SenderListParam()}{RatingParam()}{StatusParam()}{PriorityParam()}{DateParam()}&page=1&pageSize={Model.PageSize}";
 
     string PageUrl(int p) =>
-        $"/Message/CeaReports?sortBy={Model.SortBy}&sortAsc={Model.SortAsc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{RatingParam()}{StatusParam()}{PriorityParam()}{DateParam()}&page={p}&pageSize={Model.PageSize}";
+        $"/Message/CeaReports?sortBy={Model.SortBy}&sortAsc={Model.SortAsc.ToString().ToLower()}&searchTerm={Uri.EscapeDataString(Model.SearchTerm ?? "")}{SenderParam()}{SenderListParam()}{RatingParam()}{StatusParam()}{PriorityParam()}{DateParam()}&page={p}&pageSize={Model.PageSize}";
 }
 
 <!-- Filter / sort bar -->
 <form method="get" action="/Message/CeaReports" class="grp-bar">
+    <input type="hidden" name="senderId" value="@Model.SenderId" />
+    <input type="hidden" name="senderIds" value="@Model.SenderIdsCsv" />
     <input type="hidden" name="sortBy"       value="@Model.SortBy" />
     <input type="hidden" name="sortAsc"      value="@Model.SortAsc.ToString().ToLower()" />
     <input type="hidden" name="pageSize" id="h-page-size" value="@Model.PageSize" />
@@ -329,6 +333,10 @@
         @if (!string.IsNullOrEmpty(Model.StatusFilter))
         {
             <span> · status: <strong>@Model.StatusFilter</strong></span>
+        }
+        @if (Model.SelectedSenderIds.Any())
+        {
+            <span> · sender list: <strong>@Model.SelectedSenderIds.Count()</strong></span>
         }
     </span>
     <span>
@@ -495,23 +503,21 @@ document.addEventListener('click', function (e) {
 document.getElementById('btn-priority-toggle').addEventListener('click', function () {
     var h = document.getElementById('h-priority');
     h.value = h.value === 'true' ? 'false' : 'true';
-    this.closest('form').submit();
+    this.classList.toggle('btn-warning', h.value === 'true');
+    this.classList.toggle('btn-outline-secondary', h.value !== 'true');
 });
 
 // Page size dropdown
 document.getElementById('sel-page-size').addEventListener('change', function () {
     document.getElementById('h-page-size').value = this.value;
-    this.closest('form').submit();
 });
 
-// Date inputs — sync to hidden fields and submit
+// Date inputs — stage values only
 document.getElementById('ui-date-from').addEventListener('change', function () {
     document.getElementById('h-date-from').value = this.value;
-    this.closest('form').submit();
 });
 document.getElementById('ui-date-to').addEventListener('change', function () {
     document.getElementById('h-date-to').value = this.value;
-    this.closest('form').submit();
 });
 
 // Rating filter swatches
@@ -522,15 +528,39 @@ document.addEventListener('click', function (e) {
     document.querySelectorAll('.cea-filter-dot, .cea-filter-all').forEach(d => d.classList.remove('active'));
     dot.classList.add('active');
     document.getElementById('cea-rating-input').value = val;
-    dot.closest('form').submit();
 });
 
 // Status filter buttons
 document.querySelectorAll('.cea-status-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
         document.getElementById('h-status').value = this.dataset.value;
-        this.closest('form').submit();
+
+        document.querySelectorAll('.cea-status-btn').forEach(function (b) {
+            b.classList.remove('active');
+            b.style.background = '';
+            b.style.color = '';
+            b.style.borderColor = '';
+        });
+
+        this.classList.add('active');
+        if (this.dataset.value === 'OPEN') {
+            this.style.background = '#adb5bd';
+            this.style.color = '#fff';
+            this.style.borderColor = '#adb5bd';
+        }
+        if (this.dataset.value === 'RATED') {
+            this.style.background = '#28a745';
+            this.style.color = '#fff';
+            this.style.borderColor = '#28a745';
+        }
     });
+});
+
+// Sync staged controls right before submit
+document.querySelector('form.grp-bar').addEventListener('submit', function () {
+    document.getElementById('h-page-size').value = document.getElementById('sel-page-size').value;
+    document.getElementById('h-date-from').value = document.getElementById('ui-date-from').value;
+    document.getElementById('h-date-to').value = document.getElementById('ui-date-to').value;
 });
 
 // Sender rating dots — AJAX save

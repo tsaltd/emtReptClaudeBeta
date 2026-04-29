@@ -148,8 +148,13 @@ public class MessageRepository : IMessageRepository
 
         if (!string.IsNullOrWhiteSpace(ratingFilter))
         {
-            var filters = ratingFilter.Split(',', StringSplitOptions.RemoveEmptyEntries);
-            q = q.Where(m => filters.Contains(m.RatingName));
+            var filters = ratingFilter
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(f => !string.IsNullOrWhiteSpace(f))
+                .Select(f => f.ToLower())
+                .ToList();
+            if (filters.Count > 0)
+                q = q.Where(m => m.RatingName != null && filters.Contains(m.RatingName.ToLower()));
         }
 
         if (!string.IsNullOrWhiteSpace(statusFilter))
@@ -250,8 +255,13 @@ public class SenderRepository : ISenderRepository
 
         if (!string.IsNullOrWhiteSpace(ratingFilter))
         {
-            var filters = ratingFilter.Split(',', StringSplitOptions.RemoveEmptyEntries);
-            q = q.Where(s => filters.Contains(s.RatingName));
+            var filters = ratingFilter
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(f => !string.IsNullOrWhiteSpace(f))
+                .Select(f => f.ToLower())
+                .ToList();
+            if (filters.Count > 0)
+                q = q.Where(s => s.RatingName != null && filters.Contains(s.RatingName.ToLower()));
         }
 
         if (!string.IsNullOrWhiteSpace(statusFilter))

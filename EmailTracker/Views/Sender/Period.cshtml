@@ -1,0 +1,407 @@
+@model SenderPeriodListViewModel
+@{ ViewData["Title"] = "Sender Period List"; }
+
+@section Styles {
+<style>
+    .sheet-toolbar .form-control,
+    .sheet-toolbar .form-select,
+    .sheet-toolbar .btn {
+        font-size: .78rem;
+    }
+    .sheet-wrap {
+        border: 1px solid #ced4da;
+        background: #fff;
+        overflow: auto;
+        max-height: calc(100vh - 270px);
+    }
+    .sheet-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .sheet-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #f1f3f5;
+        border-bottom: 1px solid #ced4da;
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        color: #495057;
+        padding: .4rem .5rem;
+        white-space: nowrap;
+    }
+    .sheet-table td {
+        border-bottom: 1px solid #eceff1;
+        padding: .35rem .5rem;
+        font-size: .82rem;
+        vertical-align: middle;
+    }
+    .sheet-group-row td {
+        background: #eef3f8;
+        border-top: 1px solid #dbe3ea;
+        border-bottom: 1px solid #dbe3ea;
+        font-size: .74rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .35px;
+        color: #3d4b59;
+        padding: .3rem .5rem;
+    }
+    .sheet-table tr.selected td {
+        background: #e7f1ff;
+    }
+    .sheet-index {
+        width: 68px;
+        text-align: right;
+        color: #6c757d;
+        font-variant-numeric: tabular-nums;
+    }
+    .sheet-select {
+        width: 56px;
+        text-align: center;
+    }
+    .sender-cell {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+    }
+    .sender-email {
+        margin: 0;
+    }
+    .rating-cell {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+    }
+    .rating-dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        border: 1px solid rgba(0,0,0,.28);
+        display: inline-block;
+        flex-shrink: 0;
+    }
+    .rating-name {
+        font-size: .8rem;
+        color: #2f3b46;
+    }
+    .rating-inline {
+        font-size: .74rem;
+        color: #6c757d;
+    }
+</style>
+}
+
+<div class="card border-0 shadow-sm mb-2 sheet-toolbar">
+    <div class="card-body py-2">
+        <form method="get" action="/Sender/Period" class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <span class="small text-muted">Date:</span>
+            <input id="dateFrom" name="dateFrom" type="date" class="form-control form-control-sm" style="width:145px" value="@Model.DateFrom" />
+            <input id="dateTo" name="dateTo" type="date" class="form-control form-control-sm" style="width:145px" value="@Model.DateTo" />
+            <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+            <a href="/Sender/Period" class="btn btn-sm btn-outline-secondary">Clear</a>
+            <span class="small text-muted ms-2">@Model.TotalCount sender(s)</span>
+        </form>
+
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <span class="small text-muted">Selected:</span>
+            <strong id="selected-count" class="small">0</strong>
+            <button type="button" id="select-all" class="btn btn-sm btn-outline-secondary">Select All</button>
+            <button type="button" id="clear-selection" class="btn btn-sm btn-outline-secondary">Clear</button>
+            <button type="button" id="open-cea-reports" class="btn btn-sm btn-outline-info" disabled>CEA Reports</button>
+            <button type="button" id="open-cea-groups" class="btn btn-sm btn-outline-dark" disabled>CEA Groups</button>
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="small text-muted">List:</span>
+            <input id="list-template-name" type="text" class="form-control form-control-sm" style="width:180px" placeholder="Template name" />
+            <button type="button" id="save-template" class="btn btn-sm btn-primary" disabled>Save</button>
+            <select id="saved-template-select" class="form-select form-select-sm" style="width:240px">
+                <option value="">Select saved list…</option>
+            </select>
+            <button type="button" id="load-template" class="btn btn-sm btn-outline-primary">Load</button>
+            <button type="button" id="delete-template" class="btn btn-sm btn-outline-danger">Delete</button>
+            <span id="template-status" class="small text-muted ms-1"></span>
+        </div>
+    </div>
+</div>
+
+<div class="sheet-wrap">
+    <table class="sheet-table">
+        <thead>
+            <tr>
+                <th class="sheet-index">#</th>
+                <th class="sheet-select">
+                    <input type="checkbox" id="chk-all" />
+                </th>
+                <th>Sender</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Senders.Any())
+            {
+                <tr><td colspan="3" class="text-center text-muted py-4">No senders found for selected period.</td></tr>
+            }
+            @{ var rowIndex = 0; }
+            @foreach (var ratingGroup in Model.Senders.GroupBy(s => new { s.RatingName, s.ColorCode }))
+            {
+                <tr class="sheet-group-row">
+                    <td colspan="3">
+                        <span class="rating-cell">
+                            <span class="rating-dot" style="background:@(ratingGroup.Key.ColorCode ?? "#6c757d");"></span>
+                            <span class="rating-name">@ratingGroup.Key.RatingName</span>
+                        </span>
+                        @ratingGroup.Count() sender(s)
+                    </td>
+                </tr>
+
+                @foreach (var s in ratingGroup)
+                {
+                    rowIndex++;
+                    <tr data-sender-id="@s.SenderId" data-email="@s.EmailAddress">
+                        <td class="sheet-index">@rowIndex</td>
+                        <td class="sheet-select">
+                            <input type="checkbox" class="row-select" data-sender-id="@s.SenderId" />
+                        </td>
+                        <td>
+                            <span class="sender-cell">
+                                <code class="small sender-email">@s.EmailAddress</code>
+                                <span class="rating-inline">@s.RatingName</span>
+                            </span>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    var selectedSenderIds = new Set();
+    var dateFrom = document.getElementById('dateFrom')?.value || '';
+    var dateTo = document.getElementById('dateTo')?.value || '';
+    var STORAGE_KEY = 'selectedSenderIdsCsv';
+    var TEMPLATE_STORE_KEY = 'senderListTemplates';
+    var TEMPLATE_NAME_KEY = 'selectedSenderListTemplateName';
+
+    function withDates(params) {
+        if (dateFrom) params.dateFrom = dateFrom;
+        if (dateTo) params.dateTo = dateTo;
+        return params;
+    }
+
+    function setButtonsEnabled(enabled) {
+        ['open-cea-reports','open-cea-groups'].forEach(function (id) {
+            var btn = document.getElementById(id);
+            if (btn) btn.disabled = !enabled;
+        });
+
+        var saveBtn = document.getElementById('save-template');
+        if (saveBtn) saveBtn.disabled = !enabled;
+    }
+
+    function getTemplates() {
+        try {
+            var raw = localStorage.getItem(TEMPLATE_STORE_KEY);
+            var arr = raw ? JSON.parse(raw) : [];
+            return Array.isArray(arr) ? arr : [];
+        } catch {
+            return [];
+        }
+    }
+
+    function saveTemplates(templates) {
+        localStorage.setItem(TEMPLATE_STORE_KEY, JSON.stringify(templates));
+    }
+
+    function setStatus(msg) {
+        var el = document.getElementById('template-status');
+        if (el) el.textContent = msg || '';
+    }
+
+    function renderTemplateSelect() {
+        var sel = document.getElementById('saved-template-select');
+        if (!sel) return;
+
+        var selectedName = localStorage.getItem(TEMPLATE_NAME_KEY) || '';
+        var templates = getTemplates().sort(function (a, b) {
+            return String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' });
+        });
+
+        sel.innerHTML = '<option value="">Select saved list…</option>';
+        templates.forEach(function (t) {
+            var opt = document.createElement('option');
+            opt.value = t.name;
+            opt.textContent = t.name + ' (' + (t.count || 0) + ')';
+            if (t.name === selectedName) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    }
+
+    function syncUi() {
+        document.getElementById('selected-count').textContent = String(selectedSenderIds.size);
+        setButtonsEnabled(selectedSenderIds.size > 0);
+        localStorage.setItem(STORAGE_KEY, Array.from(selectedSenderIds).join(','));
+
+        document.querySelectorAll('tbody tr[data-sender-id]').forEach(function (tr) {
+            var id = tr.dataset.senderId;
+            var selected = selectedSenderIds.has(id);
+            tr.classList.toggle('selected', selected);
+            var checkbox = tr.querySelector('.row-select');
+            if (checkbox) checkbox.checked = selected;
+        });
+    }
+
+    function saveCurrentAsTemplate() {
+        var nameInput = document.getElementById('list-template-name');
+        var name = (nameInput?.value || '').trim();
+        if (!name) {
+            setStatus('Enter a template name.');
+            return;
+        }
+        if (selectedSenderIds.size === 0) {
+            setStatus('Select at least one sender.');
+            return;
+        }
+
+        var templates = getTemplates();
+        var payload = {
+            name: name,
+            senderIdsCsv: Array.from(selectedSenderIds).join(','),
+            count: selectedSenderIds.size,
+            dateFrom: dateFrom,
+            dateTo: dateTo,
+            updatedAt: new Date().toISOString()
+        };
+
+        var idx = templates.findIndex(function (t) { return String(t.name).toLowerCase() === name.toLowerCase(); });
+        if (idx >= 0) templates[idx] = payload;
+        else templates.push(payload);
+
+        saveTemplates(templates);
+        localStorage.setItem(TEMPLATE_NAME_KEY, name);
+        renderTemplateSelect();
+        setStatus('Saved list: ' + name);
+    }
+
+    function loadTemplateByName(name) {
+        var templates = getTemplates();
+        var t = templates.find(function (x) { return x.name === name; });
+        if (!t) {
+            setStatus('Template not found.');
+            return;
+        }
+
+        selectedSenderIds.clear();
+        (t.senderIdsCsv || '').split(',').forEach(function (token) {
+            var id = token.trim();
+            if (id) selectedSenderIds.add(id);
+        });
+
+        localStorage.setItem(TEMPLATE_NAME_KEY, t.name);
+        var nameInput = document.getElementById('list-template-name');
+        if (nameInput) nameInput.value = t.name;
+        syncUi();
+        setStatus('Loaded list: ' + t.name);
+    }
+
+    function deleteSelectedTemplate() {
+        var sel = document.getElementById('saved-template-select');
+        var name = sel?.value || '';
+        if (!name) {
+            setStatus('Choose a template to delete.');
+            return;
+        }
+
+        var templates = getTemplates().filter(function (t) { return t.name !== name; });
+        saveTemplates(templates);
+        if ((localStorage.getItem(TEMPLATE_NAME_KEY) || '') === name) {
+            localStorage.removeItem(TEMPLATE_NAME_KEY);
+        }
+        renderTemplateSelect();
+        setStatus('Deleted list: ' + name);
+    }
+
+    function addVisibleRowsToSelection() {
+        document.querySelectorAll('tbody tr[data-sender-id]').forEach(function (tr) {
+            selectedSenderIds.add(tr.dataset.senderId);
+        });
+        syncUi();
+    }
+
+    function clearSelection() {
+        selectedSenderIds.clear();
+        syncUi();
+    }
+
+    document.querySelectorAll('.row-select').forEach(function (checkbox) {
+        checkbox.addEventListener('change', function () {
+            var id = checkbox.dataset.senderId;
+            if (checkbox.checked) selectedSenderIds.add(id);
+            else selectedSenderIds.delete(id);
+            syncUi();
+        });
+    });
+
+    document.querySelectorAll('tbody tr[data-sender-id]').forEach(function (tr) {
+        tr.addEventListener('click', function (e) {
+            if (e.target && (e.target.tagName === 'INPUT' || e.target.closest('input'))) return;
+            var id = tr.dataset.senderId;
+            if (selectedSenderIds.has(id)) selectedSenderIds.delete(id);
+            else selectedSenderIds.add(id);
+            syncUi();
+        });
+    });
+
+    document.getElementById('chk-all')?.addEventListener('change', function () {
+        if (this.checked) addVisibleRowsToSelection();
+        else clearSelection();
+    });
+
+    document.getElementById('select-all')?.addEventListener('click', addVisibleRowsToSelection);
+    document.getElementById('clear-selection')?.addEventListener('click', clearSelection);
+    document.getElementById('save-template')?.addEventListener('click', saveCurrentAsTemplate);
+    document.getElementById('load-template')?.addEventListener('click', function () {
+        var sel = document.getElementById('saved-template-select');
+        if (sel && sel.value) loadTemplateByName(sel.value);
+        else setStatus('Choose a saved list first.');
+    });
+    document.getElementById('delete-template')?.addEventListener('click', deleteSelectedTemplate);
+    document.getElementById('saved-template-select')?.addEventListener('change', function () {
+        if (this.value) {
+            localStorage.setItem(TEMPLATE_NAME_KEY, this.value);
+            var nameInput = document.getElementById('list-template-name');
+            if (nameInput) nameInput.value = this.value;
+        }
+    });
+
+    var saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        saved.split(',').forEach(function (token) {
+            var id = token.trim();
+            if (id) selectedSenderIds.add(id);
+        });
+    }
+    renderTemplateSelect();
+    var currentTemplateName = localStorage.getItem(TEMPLATE_NAME_KEY) || '';
+    if (currentTemplateName) {
+        var nameInput = document.getElementById('list-template-name');
+        if (nameInput) nameInput.value = currentTemplateName;
+    }
+    syncUi();
+
+    document.getElementById('open-cea-reports')?.addEventListener('click', function () {
+        var qs = new URLSearchParams(withDates({ senderIds: Array.from(selectedSenderIds).join(',') })).toString();
+        window.location = '/Message/CeaReports?' + qs;
+    });
+
+    document.getElementById('open-cea-groups')?.addEventListener('click', function () {
+        var qs = new URLSearchParams(withDates({ senderIds: Array.from(selectedSenderIds).join(',') })).toString();
+        window.location = '/Message/Grouped?' + qs;
+    });
+})();
+</script>
+}
