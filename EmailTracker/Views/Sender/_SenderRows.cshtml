@@ -4,6 +4,7 @@
     <table class="table table-hover">
         <thead>
             <tr>
+                <th style="width:34px" class="text-center">Sel</th>
                 <th>Canonical Email</th>
                 <th>Display Name</th>
                 <th class="text-center">Msg Count</th>
@@ -17,11 +18,15 @@
         <tbody>
             @if (!Model.Senders.Any())
             {
-                <tr><td colspan="8" class="text-center text-muted py-4">No senders found.</td></tr>
+                <tr><td colspan="9" class="text-center text-muted py-4">No senders found.</td></tr>
             }
             @foreach (var s in Model.Senders)
             {
                 <tr>
+                    <td class="text-center align-middle">
+                           <input type="checkbox" class="form-check-input subset-cb" value="@s.SenderId" title="Select sender for subset"
+                               style="border:2px solid #0d6efd;width:1.1rem;height:1.1rem;cursor:pointer" />
+                    </td>
                     <td><code class="small">@s.EmailAddress</code></td>
                     <td class="small">@(s.DisplayName ?? "—")</td>
                     <td class="text-center"><span class="badge bg-primary rounded-pill">@s.MsgCount</span></td>

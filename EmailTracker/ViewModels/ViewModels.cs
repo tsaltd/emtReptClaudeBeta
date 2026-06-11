@@ -1,6 +1,23 @@
 namespace EmailTracker.ViewModels;
 
 // ════════════════════════════════════════════════════════════════
+//  SHARED FILTER CONTRACT
+// ════════════════════════════════════════════════════════════════
+
+/// <summary>
+/// Single filter contract passed to every service that supports filtered queries.
+/// Each service applies only the fields relevant to its domain and ignores the rest.
+/// </summary>
+public record FilterParameters
+{
+    public string? RatingFilter { get; init; }
+    public string? StatusFilter { get; init; }
+    public string? DateFrom     { get; init; }
+    public string? DateTo       { get; init; }
+    public bool    PriorityOnly { get; init; }
+}
+
+// ════════════════════════════════════════════════════════════════
 //  SHARED FILTER BAR ViewModel
 // ════════════════════════════════════════════════════════════════
 
@@ -141,6 +158,12 @@ public class SenderSearchViewModel
     public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
 }
 
+public class SenderSubsetOptionViewModel
+{
+    public int SubsetId { get; set; }
+    public string SubsetName { get; set; } = string.Empty;
+}
+
 public class FromRawSummaryViewModel
 {
     public string FromRaw  { get; set; } = string.Empty;
@@ -260,14 +283,15 @@ public class SenderBrowseViewModel
 
 public class CeaGroupViewModel
 {
-    public int     SenderId     { get; set; }
-    public string  EmailAddress { get; set; } = string.Empty;
-    public string  RatingName   { get; set; } = string.Empty;
-    public int     RatingId     { get; set; }
-    public string? ColorCode    { get; set; }
-    public int     MsgCount     { get; set; }
-    public int     StatusId     { get; set; } = 1;
-    public string  StatusName   { get; set; } = "OPEN";
+    public int     SenderId        { get; set; }
+    public string  EmailAddress    { get; set; } = string.Empty;
+    public string  RatingName      { get; set; } = string.Empty;
+    public int     RatingId        { get; set; }
+    public int     RatingSortOrder { get; set; } = int.MaxValue;
+    public string? ColorCode       { get; set; }
+    public int     MsgCount        { get; set; }
+    public int     StatusId        { get; set; } = 1;
+    public string  StatusName      { get; set; } = "OPEN";
     public List<FromRawGroupViewModel> FromRawGroups { get; set; } = [];
 }
 

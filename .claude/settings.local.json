@@ -4,7 +4,10 @@
       "Bash(dotnet build:*)",
       "Bash(git diff:*)",
       "Bash(sqlite3 \"C:\\\\Users\\\\wp710\\\\OneDrive\\\\Dev\\\\BetaLab\\\\Gmail_Analysis_Solution\\\\GmailAnalysisDB\\\\db_runtime\\\\gmailanalysis.db\" \"SELECT COUNT\\(*\\) FROM priority_message\")",
-      "Bash(sqlite3 \"C:\\\\Users\\\\wp710\\\\OneDrive\\\\Dev\\\\BetaLab\\\\Gmail_Analysis_Solution\\\\GmailAnalysisDB\\\\db_runtime\\\\gmailanalysis.db\" \"SELECT first_seen, created_at FROM sender LIMIT 3;\")"
+      "Bash(sqlite3 \"C:\\\\Users\\\\wp710\\\\OneDrive\\\\Dev\\\\BetaLab\\\\Gmail_Analysis_Solution\\\\GmailAnalysisDB\\\\db_runtime\\\\gmailanalysis.db\" \"SELECT first_seen, created_at FROM sender LIMIT 3;\")",
+      "Bash(dotnet run:*)",
+      "Bash(sqlite3 \"C:/Users/wp710/OneDrive/Dev/BetaLab/Gmail_Analysis_Solution/GmailAnalysisDB/db_runtime/gmailanalysis.db\" \".schema Rating\")",
+      "Bash(sqlite3 \"C:/Users/wp710/OneDrive/Dev/BetaLab/Gmail_Analysis_Solution/GmailAnalysisDB/db_runtime/gmailanalysis.db\" \".schema v_sender_with_ratings\")"
     ],
     "defaultMode": "default"
   }

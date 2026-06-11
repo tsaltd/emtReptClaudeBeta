@@ -27,6 +27,21 @@ public interface IMessageService
 
     /// <summary>Fetch messages by a set of gmail message IDs (for priority filter).</summary>
     Task<IEnumerable<MessageRowViewModel>> GetByGmailIdsAsync(IEnumerable<string> gmailIds);
+
+    /// <summary>
+    /// Centralized grouped view builder. Applies FilterParameters consistently via the
+    /// repository query layer — no in-memory re-filtering. Both CEA Groups and CEA Reports
+    /// call this so filter behaviour is identical across views.
+    /// </summary>
+    Task<MessageGroupedViewModel> GetGroupedAsync(
+        FilterParameters filter,
+        string?       searchTerm        = null,
+        string        sortBy            = "count",
+        bool          sortAsc           = false,
+        int           page              = 1,
+        int           pageSize          = 10,
+        int?          senderId          = null,
+        HashSet<int>? selectedSenderIds = null);
 }
 
 public interface ISenderService
@@ -59,6 +74,13 @@ public interface ISenderService
 public interface IRatingService
 {
     Task<IEnumerable<RatingOptionViewModel>> GetAllAsync();
+}
+
+public interface ISenderSubsetService
+{
+    Task<IEnumerable<SenderSubsetOptionViewModel>> GetAllAsync();
+    Task<HashSet<int>> GetSenderIdsAsync(int subsetId);
+    Task<SenderSubsetOptionViewModel> SaveAsync(string subsetName, IEnumerable<int> senderIds);
 }
 
 // ── Implementations ──────────────────────────────────────────────
@@ -144,12 +166,15 @@ public class MessageService : IMessageService
     private readonly IMessageRepository      _msgRepo;
     private readonly IRatingRepository       _ratingRepo;
     private readonly IPriorityMessageService _priorityService;
+    private readonly ISenderService          _senderService;
 
-    public MessageService(IMessageRepository msgRepo, IRatingRepository ratingRepo, IPriorityMessageService priorityService)
+    public MessageService(IMessageRepository msgRepo, IRatingRepository ratingRepo,
+                          IPriorityMessageService priorityService, ISenderService senderService)
     {
         _msgRepo         = msgRepo;
         _ratingRepo      = ratingRepo;
         _priorityService = priorityService;
+        _senderService   = senderService;
     }
 
     public async Task<MessageSearchViewModel> SearchAsync(MessageSearchViewModel filters)
@@ -236,6 +261,252 @@ public class MessageService : IMessageService
             GmailMessageId = m.GmailMessageId,
             IsPriority     = true
         });
+    }
+
+    public async Task<MessageGroupedViewModel> GetGroupedAsync(
+        FilterParameters filter,
+        string?       searchTerm        = null,
+        string        sortBy            = "count",
+        bool          sortAsc           = false,
+        int           page              = 1,
+        int           pageSize          = 10,
+        int?          senderId          = null,
+        HashSet<int>? selectedSenderIds = null)
+    {
+        selectedSenderIds ??= [];
+        bool hasSenderList   = selectedSenderIds.Count > 0;
+        var  ratingFilters   = ParseGroupFilterValues(filter.RatingFilter);
+        bool hasRatingFilter = ratingFilters.Count > 0;
+        bool hasDateFilter   = !string.IsNullOrEmpty(filter.DateFrom) || !string.IsNullOrEmpty(filter.DateTo);
+
+        var priorityIds = await _priorityService.GetAllIdsAsync();
+        var ratings     = await _ratingRepo.GetAllAsync();
+        var ratingVms   = ratings.Select(r => new RatingOptionViewModel
+        {
+            RatingId   = r.RatingId,
+            RatingName = r.RatingName,
+            SortOrder  = r.SortOrder,
+            ColorCode  = r.ColorCode
+        }).ToList();
+
+        var groups = new List<CeaGroupViewModel>();
+        int total  = 0;
+
+        if (filter.PriorityOnly)
+        {
+            // Priority path: fetch all starred messages then filter in memory
+            var allPriorityMsgs = (await GetByGmailIdsAsync(priorityIds))
+                .Where(m =>
+                    ((!senderId.HasValue && !hasSenderList)
+                        || (senderId.HasValue   && m.SenderId == senderId.Value)
+                        || (hasSenderList       && selectedSenderIds.Contains(m.SenderId))) &&
+                    (string.IsNullOrEmpty(searchTerm)    || m.EmailAddress.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+                    (!hasRatingFilter || (!string.IsNullOrWhiteSpace(m.RatingName) && ratingFilters.Contains(m.RatingName.Trim()))) &&
+                    (string.IsNullOrEmpty(filter.DateFrom) || string.Compare(m.InternalDate, filter.DateFrom) >= 0) &&
+                    (string.IsNullOrEmpty(filter.DateTo)   || string.Compare(m.InternalDate, filter.DateTo)   <= 0))
+                .ToList();
+
+            var bySenderBase = allPriorityMsgs.GroupBy(m => m.SenderId).ToList();
+            var bySender = sortBy == "email"
+                ? (sortAsc ? bySenderBase.OrderBy(g => g.First().EmailAddress)
+                           : bySenderBase.OrderByDescending(g => g.First().EmailAddress)).ToList()
+                : (sortAsc ? bySenderBase.OrderBy(g => g.Count())
+                           : bySenderBase.OrderByDescending(g => g.Count())).ToList();
+
+            total = bySender.Count;
+            foreach (var senderGroup in bySender.Skip((page - 1) * pageSize).Take(pageSize))
+            {
+                var first = senderGroup.First();
+                var fromRawGroups = senderGroup
+                    .GroupBy(m => m.FromRaw ?? "(no from header)")
+                    .OrderByDescending(g => g.Count())
+                    .Select(g => new FromRawGroupViewModel
+                    {
+                        FromRaw  = g.Key,
+                        Messages = g.OrderByDescending(m => m.InternalDate).ToList()
+                    }).ToList();
+
+                var r1 = ratingVms.FirstOrDefault(r => r.RatingName == first.RatingName);
+                groups.Add(new CeaGroupViewModel
+                {
+                    SenderId        = first.SenderId,
+                    EmailAddress    = first.EmailAddress,
+                    RatingName      = first.RatingName,
+                    RatingId        = r1?.RatingId ?? 0,
+                    RatingSortOrder = r1?.SortOrder > 0 ? r1.SortOrder : int.MaxValue,
+                    ColorCode       = r1?.ColorCode,
+                    MsgCount        = senderGroup.Count(),
+                    FromRawGroups   = fromRawGroups
+                });
+            }
+        }
+        else
+        {
+            // Normal path: get senders via service (rating/status applied at DB level),
+            // then fetch each sender's messages via repository (date applied at DB level).
+            List<SenderSummaryViewModel> allSenders;
+
+            if (hasSenderList)
+            {
+                var all = await _senderService.SearchAsync(new SenderSearchViewModel
+                {
+                    SearchTerm   = searchTerm,
+                    RatingFilter = filter.RatingFilter,
+                    StatusFilter = filter.StatusFilter,
+                    SortAsc      = sortBy == "count" ? sortAsc : false,
+                    Page = 1, PageSize = int.MaxValue
+                });
+                var filtered = all.Senders.Where(s => selectedSenderIds.Contains(s.SenderId));
+                allSenders = sortBy == "email"
+                    ? (sortAsc ? filtered.OrderBy(s => s.EmailAddress)
+                               : filtered.OrderByDescending(s => s.EmailAddress)).ToList()
+                    : filtered.ToList();
+            }
+            else if (senderId.HasValue)
+            {
+                var all = await _senderService.SearchAsync(new SenderSearchViewModel
+                {
+                    SearchTerm   = searchTerm,
+                    RatingFilter = filter.RatingFilter,
+                    StatusFilter = filter.StatusFilter,
+                    SortAsc      = sortBy == "count" ? sortAsc : false,
+                    Page = 1, PageSize = int.MaxValue
+                });
+                var filtered = all.Senders.Where(s => s.SenderId == senderId.Value).ToList();
+                allSenders = sortBy == "email"
+                    ? (sortAsc ? filtered.OrderBy(s => s.EmailAddress)
+                               : filtered.OrderByDescending(s => s.EmailAddress)).ToList()
+                    : filtered;
+            }
+            else if (sortBy == "email" || sortBy == "rating" || hasDateFilter)
+            {
+                var all = await _senderService.SearchAsync(new SenderSearchViewModel
+                {
+                    SearchTerm   = searchTerm,
+                    RatingFilter = filter.RatingFilter,
+                    StatusFilter = filter.StatusFilter,
+                    SortAsc      = false,
+                    Page = 1, PageSize = int.MaxValue
+                });
+                allSenders = sortBy == "email"
+                    ? (sortAsc ? all.Senders.OrderBy(s => s.EmailAddress)
+                               : all.Senders.OrderByDescending(s => s.EmailAddress)).ToList()
+                    : all.Senders.ToList();
+            }
+            else
+            {
+                var result = await _senderService.SearchAsync(new SenderSearchViewModel
+                {
+                    SearchTerm   = searchTerm,
+                    RatingFilter = filter.RatingFilter,
+                    StatusFilter = filter.StatusFilter,
+                    SortAsc      = sortAsc,
+                    Page         = page,
+                    PageSize     = pageSize
+                });
+                total      = result.TotalCount;
+                allSenders = result.Senders.ToList();
+            }
+
+            // Per sender: fetch messages with date filter applied at DB level via repository
+            var allGroups = new List<CeaGroupViewModel>();
+            foreach (var s in allSenders)
+            {
+                var rawMsgs = await _msgRepo.SearchAsync(
+                    s.SenderId, null, filter.DateFrom, filter.DateTo, null, null, 1, int.MaxValue);
+
+                var msgs = rawMsgs.Select(m => new MessageRowViewModel
+                {
+                    MessageId      = m.MessageId,
+                    RunId          = m.RunId,
+                    SenderId       = m.SenderId,
+                    EmailAddress   = m.EmailAddress,
+                    RatingName     = m.RatingName,
+                    ColorCode      = m.ColorCode,
+                    Subject        = m.Subject,
+                    Snippet        = m.Snippet,
+                    InternalDate   = m.InternalDate,
+                    FromRaw        = m.FromRaw,
+                    GmailMessageId = m.GmailMessageId,
+                    IsPriority     = m.GmailMessageId != null && priorityIds.Contains(m.GmailMessageId)
+                }).ToList();
+
+                if (msgs.Count == 0) continue;
+
+                var fromRawGroups = msgs
+                    .GroupBy(m => m.FromRaw ?? "(no from header)")
+                    .OrderByDescending(g => g.Count())
+                    .Select(g => new FromRawGroupViewModel
+                    {
+                        FromRaw  = g.Key,
+                        Messages = g.OrderByDescending(m => m.InternalDate).ToList()
+                    }).ToList();
+
+                var rv = ratingVms.FirstOrDefault(r => r.RatingId == s.RatingId);
+                allGroups.Add(new CeaGroupViewModel
+                {
+                    SenderId        = s.SenderId,
+                    EmailAddress    = s.EmailAddress,
+                    RatingName      = s.RatingName,
+                    RatingId        = s.RatingId,
+                    RatingSortOrder = rv?.SortOrder > 0 ? rv.SortOrder : int.MaxValue,
+                    ColorCode       = s.ColorCode,
+                    MsgCount        = hasDateFilter ? msgs.Count : s.MsgCount,
+                    StatusId        = s.StatusId,
+                    StatusName      = s.StatusName,
+                    FromRawGroups   = fromRawGroups
+                });
+            }
+
+            if (sortBy == "email" || sortBy == "rating" || hasDateFilter)
+            {
+                allGroups = sortBy == "email"
+                    ? (sortAsc ? allGroups.OrderBy(g => g.EmailAddress)
+                               : allGroups.OrderByDescending(g => g.EmailAddress)).ToList()
+                    : sortBy == "rating"
+                    // Rating rank primary; message count secondary (sortAsc controls count direction)
+                    ? (sortAsc
+                        ? allGroups.OrderBy(g => g.RatingSortOrder).ThenBy(g => g.MsgCount).ThenBy(g => g.EmailAddress)
+                        : allGroups.OrderBy(g => g.RatingSortOrder).ThenByDescending(g => g.MsgCount).ThenBy(g => g.EmailAddress)).ToList()
+                    : (sortAsc ? allGroups.OrderBy(g => g.MsgCount).ThenBy(g => g.EmailAddress)
+                               : allGroups.OrderByDescending(g => g.MsgCount).ThenBy(g => g.EmailAddress)).ToList();
+
+                total  = allGroups.Count;
+                groups = allGroups.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            }
+            else
+            {
+                groups = allGroups;
+            }
+        }
+
+        return new MessageGroupedViewModel
+        {
+            SenderId          = senderId,
+            SelectedSenderIds = selectedSenderIds,
+            SenderIdsCsv      = string.Join(",", selectedSenderIds),
+            SearchTerm        = searchTerm,
+            RatingFilter      = filter.RatingFilter,
+            StatusFilter      = filter.StatusFilter,
+            DateFrom          = filter.DateFrom,
+            DateTo            = filter.DateTo,
+            PriorityOnly      = filter.PriorityOnly,
+            SortBy            = sortBy,
+            SortAsc           = sortAsc,
+            Page              = page,
+            PageSize          = pageSize,
+            TotalSenders      = total,
+            CeaGroups         = groups,
+            AvailableRatings  = ratingVms
+        };
+    }
+
+    private static HashSet<string> ParseGroupFilterValues(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return [];
+        return raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                  .Where(v => !string.IsNullOrWhiteSpace(v))
+                  .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 }
 
@@ -551,6 +822,21 @@ public class SenderService : ISenderService
         var rating = await _ratingRepo.GetByIdAsync(ratingId);
         if (rating == null) return null;
         await _senderRepo.UpdateRatingBulkAsync(senderIds, ratingId);
+
+        var senders = new List<Sender>();
+        foreach (var id in senderIds)
+        {
+            var s = await _senderRepo.GetByIdAsync(id);
+            if (s != null) senders.Add(s);
+        }
+        var domains = senders
+            .Select(s => ExtractDomain(s.EmailAddress))
+            .Where(d => d != null)
+            .Distinct()
+            .ToList();
+        foreach (var domain in domains)
+            await PropagateBestRatingAsync(domain!);
+
         return rating.RatingName;
     }
 
@@ -564,7 +850,30 @@ public class SenderService : ISenderService
 
         sender.RatingId = ratingId;
         await _senderRepo.UpdateAsync(sender);
+
+        var domain = ExtractDomain(sender.EmailAddress);
+        if (domain != null)
+            await PropagateBestRatingAsync(domain);
+
         return rating.RatingName;
+    }
+
+    private async Task PropagateBestRatingAsync(string domain)
+    {
+        var bestRatingId = await _senderRepo.GetBestRatingIdByDomainAsync(domain);
+        if (bestRatingId > 0)
+            await _senderRepo.UpdateRatingByDomainAsync(domain, bestRatingId);
+    }
+
+    private static string? ExtractDomain(string? emailOrDomain)
+    {
+        if (string.IsNullOrWhiteSpace(emailOrDomain)) return null;
+        var idx = emailOrDomain.IndexOf('@');
+        if (idx >= 0 && idx < emailOrDomain.Length - 1)
+            return emailOrDomain.Substring(idx + 1).ToLowerInvariant();
+        if (emailOrDomain.Contains('.'))
+            return emailOrDomain.ToLowerInvariant();
+        return null;
     }
 
     public string ExtractCanonicalEmail(string fromRaw)
@@ -632,6 +941,38 @@ public class RatingService : IRatingService
             SortOrder  = r.SortOrder,
             ColorCode  = r.ColorCode
         });
+    }
+}
+
+public class SenderSubsetService : ISenderSubsetService
+{
+    private readonly ISenderSubsetRepository _subsetRepo;
+
+    public SenderSubsetService(ISenderSubsetRepository subsetRepo)
+    {
+        _subsetRepo = subsetRepo;
+    }
+
+    public async Task<IEnumerable<SenderSubsetOptionViewModel>> GetAllAsync()
+    {
+        var subsets = await _subsetRepo.GetAllAsync();
+        return subsets.Select(s => new SenderSubsetOptionViewModel
+        {
+            SubsetId = s.SubsetId,
+            SubsetName = s.SubsetName
+        });
+    }
+
+    public Task<HashSet<int>> GetSenderIdsAsync(int subsetId) => _subsetRepo.GetSenderIdsAsync(subsetId);
+
+    public async Task<SenderSubsetOptionViewModel> SaveAsync(string subsetName, IEnumerable<int> senderIds)
+    {
+        var subset = await _subsetRepo.SaveAsync(subsetName, senderIds);
+        return new SenderSubsetOptionViewModel
+        {
+            SubsetId = subset.SubsetId,
+            SubsetName = subset.SubsetName
+        };
     }
 }
 
@@ -825,13 +1166,20 @@ public class GmailIngestService : IGmailIngestService
 
         var newSenderEntities = new List<Sender>();
 
+        // Build domain → best rating map from ALL existing senders (email_address IS the domain now)
+        var bestRatingByDomain = await _db.Senders
+            .Join(_db.Ratings, s => s.RatingId, r => r.RatingId, (s, r) => new { Domain = s.EmailAddress.ToLower(), r.RatingId, r.SortOrder })
+            .GroupBy(x => x.Domain)
+            .Select(g => new { Domain = g.Key, RatingId = g.OrderBy(x => x.SortOrder).First().RatingId })
+            .ToDictionaryAsync(x => x.Domain, x => x.RatingId);
+
         foreach (var group in groups)
         {
-            var email      = group.Key;
+            var domain     = group.Key; // ResolveEmail now returns the domain
             var batchCount = group.Count();
             var first      = group.First();
 
-            if (existingMap.TryGetValue(email, out var existing))
+            if (existingMap.TryGetValue(domain, out var existing))
             {
                 starredCountsBySender.TryGetValue(existing.SenderId, out var kept);
                 existing.MsgCount  = batchCount + kept;
@@ -843,14 +1191,17 @@ public class GmailIngestService : IGmailIngestService
             }
             else
             {
+                var ratingId = bestRatingByDomain.TryGetValue(domain, out var best)
+                    ? best : 5;
+
                 var sender = new Sender
                 {
-                    EmailAddress = email,
+                    EmailAddress = domain,
                     DisplayName  = string.IsNullOrEmpty(first.DisplayName) ? null : first.DisplayName,
                     FirstSeen    = now.ToString("o"),
                     LastSeen     = now.ToString("o"),
                     MsgCount     = batchCount,
-                    RatingId     = 3,
+                    RatingId     = ratingId,
                     CreatedAt    = now.ToString("o"),
                     UpdatedAt    = now.ToString("o")
                 };
@@ -892,7 +1243,7 @@ public class GmailIngestService : IGmailIngestService
                 GmailMessageId = rec.GmailMessageId,
                 ThreadId       = string.IsNullOrEmpty(rec.ThreadId)     ? null : rec.ThreadId,
                 InternalDate   = string.IsNullOrEmpty(rec.InternalDate) ? null : rec.InternalDate,
-                HeaderDate     = string.IsNullOrEmpty(rec.HeaderDate)   ? null : rec.HeaderDate,
+                HeaderDate     = string.IsNullOrEmpty(rec.HeaderDate)   ? null : NormalizeHeaderDate(rec.HeaderDate),
                 Subject        = string.IsNullOrEmpty(rec.Subject)      ? null : rec.Subject,
                 Snippet        = string.IsNullOrEmpty(rec.Snippet)      ? null : rec.Snippet,
                 FromRaw        = string.IsNullOrEmpty(rec.FromRaw)      ? null : rec.FromRaw,
@@ -925,14 +1276,20 @@ public class GmailIngestService : IGmailIngestService
     ///   3. from_raw as-is if no @ found (identifiable exception)
     ///   4. [no-from:{gmailMessageId}] if from_raw is also blank
     /// </summary>
+    private static string NormalizeHeaderDate(string raw)
+    {
+        if (MimeKit.Utils.DateUtils.TryParse(raw, out var dto))
+            return dto.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+        return raw;
+    }
+
     private static string ResolveEmail(string canonicalEmail, string fromRaw, string gmailMessageId)
     {
-        // 1. Legacy canonical_email
-        if (!string.IsNullOrWhiteSpace(canonicalEmail))
-            return canonicalEmail.Trim().ToLower();
+        string? fullEmail = null;
 
-        // 2. Extract from from_raw
-        if (!string.IsNullOrWhiteSpace(fromRaw))
+        if (!string.IsNullOrWhiteSpace(canonicalEmail))
+            fullEmail = canonicalEmail.Trim().ToLower();
+        else if (!string.IsNullOrWhiteSpace(fromRaw))
         {
             var start = fromRaw.LastIndexOf('<');
             var end   = fromRaw.LastIndexOf('>');
@@ -940,18 +1297,24 @@ public class GmailIngestService : IGmailIngestService
             {
                 var extracted = fromRaw.Substring(start + 1, end - start - 1).Trim();
                 if (extracted.Contains('@'))
-                    return extracted.ToLowerInvariant();
+                    fullEmail = extracted.ToLowerInvariant();
             }
-            var trimmed = fromRaw.Trim();
-            if (trimmed.Contains('@'))
-                return trimmed.ToLowerInvariant();
-
-            // 3. from_raw unparseable — store as-is (no @ flags it as exception)
-            return trimmed.ToLower();
+            if (fullEmail == null)
+            {
+                var trimmed = fromRaw.Trim();
+                if (trimmed.Contains('@'))
+                    fullEmail = trimmed.ToLowerInvariant();
+            }
         }
 
-        // 4. Nothing available
-        return $"[no-from:{gmailMessageId}]";
+        if (fullEmail == null)
+            return $"[no-from:{gmailMessageId}]";
+
+        var atIdx = fullEmail.IndexOf('@');
+        if (atIdx >= 0 && atIdx < fullEmail.Length - 1)
+            return fullEmail.Substring(atIdx + 1);
+
+        return fullEmail;
     }
 
     private static async Task RunPythonScriptAsync(string pythonExe, string scriptPath, string workingDir, string scriptArgs = "")

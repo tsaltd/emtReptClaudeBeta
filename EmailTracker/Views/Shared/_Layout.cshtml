@@ -204,6 +204,43 @@
             color: #555; cursor: pointer; white-space: nowrap;
         }
         #gf-clear:hover { background: #f0f0f0; }
+
+        /* ── Top menubar ── */
+        #menubar {
+            background: #fff; border-bottom: 1px solid #dee2e6;
+            padding: 0 1rem; display: flex; align-items: center; gap: 0;
+            font-size: .85rem; position: sticky; top: 0; z-index: 49;
+        }
+        #topbar { z-index: 48; position: relative; }
+        .menubar-item {
+            display: inline-flex; align-items: center; gap: .4rem;
+            padding: .5rem .85rem; color: #495057; text-decoration: none;
+            border: none; background: none; cursor: pointer; font-size: .85rem;
+            font-family: inherit; white-space: nowrap; transition: background .12s, color .12s;
+        }
+        .menubar-item:hover { background: #f0f4ff; color: #0d6efd; }
+        .menubar-item.active { color: #0d6efd; font-weight: 600; box-shadow: inset 0 -2px 0 #0d6efd; }
+        .menubar-item i { font-size: .8rem; }
+        .menubar-dropdown { position: relative; }
+        .menubar-dropdown-panel {
+            display: none; position: absolute; top: 100%; left: 0;
+            background: #fff; border: 1px solid #dee2e6; border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.12); min-width: 190px;
+            padding: .35rem 0; z-index: 200;
+        }
+        .menubar-dropdown:hover .menubar-dropdown-panel,
+        .menubar-dropdown.open .menubar-dropdown-panel { display: block; }
+        .menubar-dropdown-panel a {
+            display: flex; align-items: center; gap: .5rem;
+            padding: .45rem 1rem; color: #333; text-decoration: none;
+            font-size: .85rem; white-space: nowrap;
+        }
+        .menubar-dropdown-panel a:hover { background: #f0f4ff; color: #0d6efd; }
+        .menubar-dropdown-panel a i { width: 16px; text-align: center; color: #888; font-size: .8rem; }
+
+        body.reading-mode #menubar { font-size: .95rem; }
+        body.reading-mode .menubar-item { font-size: .95rem; padding: .55rem .95rem; }
+        body.reading-mode .menubar-dropdown-panel a { font-size: .95rem; }
     </style>
     @await RenderSectionAsync("Styles", required: false)
 </head>
@@ -270,6 +307,41 @@
             <small class="text-muted">@DateTime.Now.ToString("dddd, MMMM d, yyyy")</small>
         </div>
     </header>
+    <nav id="menubar">
+        <a asp-controller="Home" asp-action="Index"
+           class="menubar-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+        </a>
+        <a asp-controller="Run" asp-action="Index"
+           class="menubar-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Run" ? "active" : "")">
+            <i class="fas fa-layer-group"></i> Runs
+        </a>
+        <div class="menubar-dropdown">
+            <button class="menubar-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Message" ? "active" : "")">
+                <i class="fas fa-envelope"></i> Messages <i class="fas fa-caret-down" style="font-size:.7rem;opacity:.6"></i>
+            </button>
+            <div class="menubar-dropdown-panel">
+                <a asp-controller="Message" asp-action="Index"><i class="fas fa-envelope"></i> All Messages</a>
+                <a asp-controller="Message" asp-action="Grouped"><i class="fas fa-layer-group"></i> CEA Groups</a>
+                <a asp-controller="Message" asp-action="CeaReports"><i class="fas fa-file-alt"></i> CEA Reports</a>
+                <a asp-controller="Message" asp-action="Browse"><i class="fas fa-address-card"></i> Msg Browse</a>
+            </div>
+        </div>
+        <div class="menubar-dropdown">
+            <button class="menubar-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Sender" ? "active" : "")">
+                <i class="fas fa-users"></i> Senders <i class="fas fa-caret-down" style="font-size:.7rem;opacity:.6"></i>
+            </button>
+            <div class="menubar-dropdown-panel">
+                <a asp-controller="Sender" asp-action="Index"><i class="fas fa-users"></i> Sender List</a>
+                <a asp-controller="Sender" asp-action="Browse"><i class="fas fa-address-card"></i> Browse Senders</a>
+                <a asp-controller="Sender" asp-action="QuickRate"><i class="fas fa-star-half-alt"></i> Quick Rate</a>
+            </div>
+        </div>
+        <a asp-controller="GmailIngest" asp-action="Index"
+           class="menubar-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "GmailIngest" ? "active" : "")">
+            <i class="fas fa-download"></i> Ingest
+        </a>
+    </nav>
     <div id="global-filter-strip">
         <span class="gf-label">Active Filter:</span>
         <div id="gf-pills" style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap"></div>

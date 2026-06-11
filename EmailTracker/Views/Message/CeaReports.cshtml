@@ -271,22 +271,20 @@
     </div>
 
     <div>
-        <div class="f-label">Sort by #Msg</div>
+        <div class="f-label">Sort</div>
         <div class="btn-group">
+            <a href="@SortUrl("rating", false)"
+               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "rating" && !Model.SortAsc ? "active" : "")">★ ↓ #Msg</a>
+            <a href="@SortUrl("rating", true)"
+               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "rating" && Model.SortAsc ? "active" : "")">★ ↑ #Msg</a>
             <a href="@SortUrl("count", false)"
-               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "count" && !Model.SortAsc ? "active" : "")">↓ Most</a>
+               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "count" && !Model.SortAsc ? "active" : "")">↓ #Msg</a>
             <a href="@SortUrl("count", true)"
-               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "count" && Model.SortAsc ? "active" : "")">↑ Least</a>
-        </div>
-    </div>
-
-    <div>
-        <div class="f-label">Sort by CEA</div>
-        <div class="btn-group">
+               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "count" && Model.SortAsc ? "active" : "")">↑ #Msg</a>
             <a href="@SortUrl("email", true)"
-               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "email" && Model.SortAsc ? "active" : "")">A → Z</a>
+               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "email" && Model.SortAsc ? "active" : "")">A→Z</a>
             <a href="@SortUrl("email", false)"
-               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "email" && !Model.SortAsc ? "active" : "")">Z → A</a>
+               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "email" && !Model.SortAsc ? "active" : "")">Z→A</a>
         </div>
     </div>
 

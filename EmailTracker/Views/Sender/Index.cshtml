@@ -14,10 +14,25 @@
 
 <div class="card mb-2 border-0 shadow-sm">
     <div class="card-body py-2">
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
             <label class="form-label small fw-semibold mb-0" style="white-space:nowrap">Search</label>
             <input id="s-search" type="text" class="form-control form-control-sm" style="max-width:280px"
-                   placeholder="Email or display name…" value="@Model.SearchTerm" />
+                   placeholder="Email or display name..." value="@Model.SearchTerm" />
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <label class="form-label small fw-semibold mb-0" style="white-space:nowrap">Subset Name</label>
+            <input id="subset-name" type="text" class="form-control form-control-sm" style="max-width:240px"
+                   placeholder="e.g. New York Times" />
+            <button id="save-subset-btn" type="button" class="btn btn-sm btn-outline-primary">Save Subset</button>
+
+            <label class="form-label small fw-semibold mb-0 ms-2" style="white-space:nowrap">Load Subset</label>
+            <select id="subset-select" class="form-select form-select-sm" style="max-width:260px">
+                <option value="">(choose subset)</option>
+            </select>
+            <button id="clear-subset-btn" type="button" class="btn btn-sm btn-outline-secondary">Clear Selection</button>
+
+            <span class="small text-muted ms-2">Selected: <strong id="subset-selected-count">0</strong></span>
         </div>
     </div>
 </div>
@@ -42,6 +57,56 @@
 @section Scripts {
 <script>
     let sndTimer;
+    let subsetSelected = new Set();
+
+    function showSenderToast(message, ok) {
+        $('#toast-msg').text(message);
+        $('#rating-toast')
+            .toggleClass('bg-success text-white', !!ok)
+            .toggleClass('bg-danger text-white', !ok);
+        toast.show();
+    }
+
+    function updateSubsetCount() {
+        $('#subset-selected-count').text(subsetSelected.size);
+    }
+
+    function syncSubsetCheckboxes() {
+        $('.subset-cb').each(function() {
+            var senderId = parseInt($(this).val(), 10);
+            $(this).prop('checked', subsetSelected.has(senderId));
+        });
+        updateSubsetCount();
+    }
+
+    function loadSubsetOptions(selectedId) {
+        $.getJSON('/Sender/Subsets', function(items) {
+            var $ddl = $('#subset-select');
+            var current = selectedId || $ddl.val();
+            $ddl.empty().append('<option value="">(choose subset)</option>');
+            items.forEach(function(s) {
+                var opt = $('<option></option>').val(s.subsetId).text(s.subsetName);
+                if (String(current) === String(s.subsetId)) {
+                    opt.prop('selected', true);
+                    $('#subset-name').val(s.subsetName);
+                }
+                $ddl.append(opt);
+            });
+        });
+    }
+
+    function loadSubsetMembers(subsetId) {
+        if (!subsetId) {
+            subsetSelected = new Set();
+            syncSubsetCheckboxes();
+            return;
+        }
+
+        $.getJSON('/Sender/SubsetMembers?subsetId=' + encodeURIComponent(subsetId), function(res) {
+            subsetSelected = new Set((res.senderIds || []).map(Number));
+            syncSubsetCheckboxes();
+        });
+    }
 
     function refreshSenders(page) {
         const f = FilterBar.getValues();
@@ -52,7 +117,11 @@
             page:         page || 1,
             pageSize:     50
         });
-        loadPartial('/Sender/Rows?' + params, '#sender-table-container');
+
+        $.get('/Sender/Rows?' + params, function (html) {
+            $('#sender-table-container').html(html);
+            syncSubsetCheckboxes();
+        });
     }
 
     $('#s-search').on('input', function() {
@@ -78,6 +147,64 @@
     var toast = new bootstrap.Toast(document.getElementById('rating-toast'), { delay: 2000 });
     var token = $('input[name="__RequestVerificationToken"]').val();
 
+    $(document).on('change', '.subset-cb', function() {
+        var senderId = parseInt($(this).val(), 10);
+        if ($(this).is(':checked')) {
+            subsetSelected.add(senderId);
+        } else {
+            subsetSelected.delete(senderId);
+        }
+        updateSubsetCount();
+    });
+
+    $('#save-subset-btn').on('click', function() {
+        var name = ($('#subset-name').val() || '').trim();
+        var senderIds = Array.from(subsetSelected);
+
+        if (!name) {
+            showSenderToast('Enter a subset name first.', false);
+            return;
+        }
+        if (!senderIds.length) {
+            showSenderToast('Select at least one sender with the left-side checkbox.', false);
+            return;
+        }
+
+        $.ajax({
+            url: '/Sender/SaveSubset',
+            method: 'POST',
+            contentType: 'application/json',
+            headers: { 'RequestVerificationToken': token },
+            data: JSON.stringify({ subsetName: name, senderIds: senderIds }),
+            success: function(res) {
+                if (!res.success) {
+                    showSenderToast(res.message || 'Subset save failed.', false);
+                    return;
+                }
+                showSenderToast('Subset saved: ' + res.subsetName + ' (' + res.count + ' sender(s)).', true);
+                loadSubsetOptions(res.subsetId);
+            },
+            error: function() {
+                showSenderToast('Network error while saving subset.', false);
+            }
+        });
+    });
+
+    $('#subset-select').on('change', function() {
+        var subsetId = $(this).val();
+        var selectedName = $('#subset-select option:selected').text();
+        if (subsetId) {
+            $('#subset-name').val(selectedName);
+        }
+        loadSubsetMembers(subsetId);
+    });
+
+    $('#clear-subset-btn').on('click', function() {
+        subsetSelected = new Set();
+        syncSubsetCheckboxes();
+        $('#subset-select').val('');
+    });
+
 
     $(document).on('click', '.rating-picker[data-mode="row"] .rating-swatch', function (e) {
         e.stopPropagation();
@@ -97,19 +224,18 @@
             headers: { 'RequestVerificationToken': token },
             data: JSON.stringify({ senderId: parseInt(senderId), ratingId: parseInt(ratingId) }),
             success: function (res) {
-                $('#toast-msg').text(res.success ? 'Rating saved: ' + res.ratingName : 'Error: ' + res.message);
-                $('#rating-toast').toggleClass('bg-success text-white', res.success).toggleClass('bg-danger text-white', !res.success);
-                toast.show();
+                showSenderToast(res.success ? 'Rating saved: ' + res.ratingName : 'Error: ' + res.message, res.success);
                 if (res.success && FilterBar.getValues().ratingFilter) {
                     setTimeout(function() { refreshSenders(1); }, 900);
                 }
             },
             error: function () {
-                $('#toast-msg').text('Network error — rating not saved.');
-                $('#rating-toast').addClass('bg-danger text-white');
-                toast.show();
+                showSenderToast('Network error - rating not saved.', false);
             }
         });
     });
+
+    loadSubsetOptions();
+    syncSubsetCheckboxes();
 </script>
 }

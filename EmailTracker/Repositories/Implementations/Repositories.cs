@@ -64,7 +64,8 @@ public class MessageRepository : IMessageRepository
         int     pageSize)
     {
         var q = BuildQuery(senderId, searchTerm, dateFrom, dateTo, ratingFilter, statusFilter);
-        return await q.OrderBy(m => m.EmailAddress)
+        return await q.OrderBy(m => m.SortOrder == 0 ? int.MaxValue : m.SortOrder)
+                      .ThenBy(m => m.EmailAddress)
                       .ThenBy(m => m.FromRaw)
                       .ThenBy(m => m.Subject)
                       .ThenByDescending(m => m.InternalDate)
@@ -220,6 +221,23 @@ public class SenderRepository : ISenderRepository
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.RatingId, ratingId));
     }
 
+    public async Task<int> GetBestRatingIdByDomainAsync(string domain)
+    {
+        return await _db.Senders
+            .Where(s => s.EmailAddress == domain)
+            .Join(_db.Ratings, s => s.RatingId, r => r.RatingId, (s, r) => r)
+            .OrderBy(r => r.SortOrder)
+            .Select(r => r.RatingId)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task UpdateRatingByDomainAsync(string domain, int ratingId)
+    {
+        await _db.Senders
+            .Where(s => s.EmailAddress == domain)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.RatingId, ratingId));
+    }
+
     public async Task SetStatusAsync(int senderId, int statusId)
     {
         await _db.Senders
@@ -307,4 +325,104 @@ public class PriorityMessageRepository : IPriorityMessageRepository
 
     public async Task<HashSet<string>> GetAllIdsAsync() =>
         (await _db.PriorityMessages.Select(p => p.GmailMessageId).ToListAsync()).ToHashSet();
+}
+
+// ── Sender Subset Repository ────────────────────────────────────
+public class SenderSubsetRepository : ISenderSubsetRepository
+{
+    private readonly AppDbContext _db;
+
+    public SenderSubsetRepository(AppDbContext db) => _db = db;
+
+    public async Task EnsureSchemaAsync()
+    {
+        const string sqlSubset = @"
+CREATE TABLE IF NOT EXISTS sender_subset (
+    subset_id    INTEGER PRIMARY KEY,
+    subset_name  TEXT NOT NULL UNIQUE,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);";
+
+        const string sqlMember = @"
+CREATE TABLE IF NOT EXISTS sender_subset_member (
+    subset_id    INTEGER NOT NULL,
+    sender_id    INTEGER NOT NULL,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (subset_id, sender_id),
+    FOREIGN KEY (subset_id) REFERENCES sender_subset(subset_id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES sender(sender_id) ON DELETE CASCADE
+);";
+
+        const string sqlIndex = @"CREATE INDEX IF NOT EXISTS ix_sender_subset_member_sender_id
+    ON sender_subset_member(sender_id);";
+
+        await _db.Database.ExecuteSqlRawAsync(sqlSubset);
+        await _db.Database.ExecuteSqlRawAsync(sqlMember);
+        await _db.Database.ExecuteSqlRawAsync(sqlIndex);
+    }
+
+    public async Task<IEnumerable<SenderSubset>> GetAllAsync()
+    {
+        await EnsureSchemaAsync();
+        return await _db.SenderSubsets
+            .AsNoTracking()
+            .OrderBy(s => s.SubsetName)
+            .ToListAsync();
+    }
+
+    public async Task<HashSet<int>> GetSenderIdsAsync(int subsetId)
+    {
+        await EnsureSchemaAsync();
+        var ids = await _db.SenderSubsetMembers
+            .Where(m => m.SubsetId == subsetId)
+            .Select(m => m.SenderId)
+            .ToListAsync();
+        return ids.ToHashSet();
+    }
+
+    public async Task<SenderSubset> SaveAsync(string subsetName, IEnumerable<int> senderIds)
+    {
+        await EnsureSchemaAsync();
+
+        var name = subsetName.Trim();
+        var ids = senderIds.Distinct().ToList();
+
+        var subset = await _db.SenderSubsets
+            .FirstOrDefaultAsync(s => s.SubsetName == name);
+
+        if (subset == null)
+        {
+            subset = new SenderSubset
+            {
+                SubsetName = name,
+                CreatedAt = DateTime.UtcNow.ToString("o"),
+                UpdatedAt = DateTime.UtcNow.ToString("o")
+            };
+            _db.SenderSubsets.Add(subset);
+            await _db.SaveChangesAsync();
+        }
+        else
+        {
+            subset.UpdatedAt = DateTime.UtcNow.ToString("o");
+            _db.SenderSubsets.Update(subset);
+            await _db.SaveChangesAsync();
+        }
+
+        var existing = _db.SenderSubsetMembers.Where(m => m.SubsetId == subset.SubsetId);
+        _db.SenderSubsetMembers.RemoveRange(existing);
+
+        foreach (var senderId in ids)
+        {
+            _db.SenderSubsetMembers.Add(new SenderSubsetMember
+            {
+                SubsetId = subset.SubsetId,
+                SenderId = senderId,
+                CreatedAt = DateTime.UtcNow.ToString("o")
+            });
+        }
+
+        await _db.SaveChangesAsync();
+        return subset;
+    }
 }

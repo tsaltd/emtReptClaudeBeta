@@ -100,8 +100,9 @@
         text-align: center;
         line-height: 1.4;
         font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-        color: #fff;
     }
+    .msg-cea-pill.light-bg { color: #212529; }
+    .msg-cea-pill:not(.light-bg) { color: #fff; }
     .msg-cea-link {
         font-size: .85rem;
         font-weight: 700;
@@ -183,6 +184,18 @@
     .btn-priority:hover  { color: #ffc107; }
     .btn-priority.active { color: #ffc107; }
 
+    /* ── Rating group header ─────────────────────────────────────── */
+    .rating-group-hdr td {
+        padding: .3rem 1rem;
+        font-size: .68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .8px;
+        border-top: 3px solid rgba(0,0,0,.15);
+    }
+    .rating-group-hdr td.light-bg { color: #212529; }
+    .rating-group-hdr td:not(.light-bg) { color: #fff; }
+
     /* ── Empty ───────────────────────────────────────────────────── */
     .grp-empty td {
         text-align: center;
@@ -231,7 +244,7 @@
     <input type="hidden" name="senderIds"    value="@Model.SenderIdsCsv" />
     <input type="hidden" name="sortBy"       value="@Model.SortBy" />
     <input type="hidden" name="sortAsc"      value="@Model.SortAsc.ToString().ToLower()" />
-    <input type="hidden" name="pageSize"     value="@Model.PageSize" />
+    <input type="hidden" name="pageSize" id="h-page-size" value="@Model.PageSize" />
     <input type="hidden" name="priorityOnly" id="h-priority" value="@Model.PriorityOnly.ToString().ToLower()" />
     <input type="hidden" name="statusFilter" id="h-status"   value="@Model.StatusFilter" />
     <input type="hidden" name="dateFrom"     id="h-date-from" value="@Model.DateFrom" />
@@ -281,23 +294,32 @@
     </div>
 
     <div>
-        <div class="f-label">Sort by #Msg</div>
+        <div class="f-label">Sort</div>
         <div class="btn-group">
+            <a href="@SortUrl("rating", false)"
+               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "rating" && !Model.SortAsc ? "active" : "")">★ ↓ #Msg</a>
+            <a href="@SortUrl("rating", true)"
+               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "rating" && Model.SortAsc ? "active" : "")">★ ↑ #Msg</a>
             <a href="@SortUrl("count", false)"
-               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "count" && !Model.SortAsc ? "active" : "")">↓ Most</a>
+               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "count" && !Model.SortAsc ? "active" : "")">↓ #Msg</a>
             <a href="@SortUrl("count", true)"
-               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "count" && Model.SortAsc ? "active" : "")">↑ Least</a>
+               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "count" && Model.SortAsc ? "active" : "")">↑ #Msg</a>
+            <a href="@SortUrl("email", true)"
+               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "email" && Model.SortAsc ? "active" : "")">A→Z</a>
+            <a href="@SortUrl("email", false)"
+               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "email" && !Model.SortAsc ? "active" : "")">Z→A</a>
         </div>
     </div>
 
     <div>
-        <div class="f-label">Sort by CEA</div>
-        <div class="btn-group">
-            <a href="@SortUrl("email", true)"
-               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "email" && Model.SortAsc ? "active" : "")">A → Z</a>
-            <a href="@SortUrl("email", false)"
-               class="btn btn-outline-secondary sort-btn @(Model.SortBy == "email" && !Model.SortAsc ? "active" : "")">Z → A</a>
-        </div>
+        <div class="f-label">Per Page</div>
+        <select id="sel-page-size" class="form-select" style="width:70px;border-radius:0;font-size:.8rem;height:30px;padding:.2rem .4rem">
+            @foreach (var n in new[] { 10, 20, 30 })
+            {
+                if (Model.PageSize == n) { <option value="@n" selected>@n</option> }
+                else                     { <option value="@n">@n</option> }
+            }
+        </select>
     </div>
 
     <div class="d-flex align-items-end" style="margin-top:auto">
@@ -326,8 +348,8 @@
     <span>
         Page <strong>@Model.Page</strong> of @Model.TotalPages ·
         sorted by
-        <strong>@(Model.SortBy == "email" ? "email" : "#msg")</strong>
-        @(Model.SortAsc ? "↑ asc" : "↓ desc")
+        <strong>@(Model.SortBy == "email" ? "email" : Model.SortBy == "rating" ? "rating" : "#msg")</strong>
+        @(Model.SortBy == "rating" ? (Model.SortAsc ? "↑ #msg" : "↓ #msg") : Model.SortAsc ? "↑ asc" : "↓ desc")
     </span>
 </div>
 
@@ -347,12 +369,29 @@
                 <tr class="grp-empty"><td colspan="3">No senders match your filters.</td></tr>
             }
 
+            @{
+                string? _lastRating = null;
+                var lightColors = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                    { "yellow", "#ffc107", "#ffeb3b", "#fff176", "#ffff00",
+                      "lime", "#cddc39", "cyan", "#00bcd4", "#e0e0e0", "white", "#fff", "#ffffff" };
+                bool IsLight(string? c) => !string.IsNullOrEmpty(c) && lightColors.Contains(c);
+            }
             @foreach (var cea in Model.CeaGroups)
             {
+                @if (Model.SortBy == "rating" && cea.RatingName != _lastRating)
+                {
+                    _lastRating = cea.RatingName;
+                    <tr class="rating-group-hdr">
+                        <td colspan="3" class="@(IsLight(cea.ColorCode) ? "light-bg" : "")" style="background:@(cea.ColorCode ?? "#adb5bd")">
+                            @(string.IsNullOrEmpty(cea.RatingName) ? "Unrated" : cea.RatingName)
+                        </td>
+                    </tr>
+                }
+
                 <!-- CEA pill row -->
                 <tr class="msg-cea">
                     <td colspan="3">
-                        <span class="msg-cea-pill" style="background-color:@cea.ColorCode">
+                        <span class="msg-cea-pill @(IsLight(cea.ColorCode) ? "light-bg" : "")" style="background-color:@cea.ColorCode">
                             <a href="/Sender/Detail/@cea.SenderId" class="msg-cea-link">@cea.EmailAddress</a>
                             <span class="msg-cea-count">@cea.MsgCount msg</span>
                             <a href="@BrowseUrl(cea.SenderId)" class="msg-cea-browse" title="Browse messages">⇒ browse</a>
@@ -514,8 +553,14 @@ document.getElementById('btn-priority-toggle').addEventListener('click', functio
     this.classList.toggle('btn-outline-secondary', h.value !== 'true');
 });
 
+// Page size dropdown
+document.getElementById('sel-page-size').addEventListener('change', function () {
+    document.getElementById('h-page-size').value = this.value;
+});
+
 // Sync staged filter controls right before submit
 document.querySelector('form.grp-bar').addEventListener('submit', function () {
+    document.getElementById('h-page-size').value = document.getElementById('sel-page-size').value;
     document.getElementById('h-date-from').value = document.getElementById('ui-date-from').value;
     document.getElementById('h-date-to').value   = document.getElementById('ui-date-to').value;
 });

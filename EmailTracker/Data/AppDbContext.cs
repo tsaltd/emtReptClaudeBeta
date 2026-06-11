@@ -14,6 +14,8 @@ public class AppDbContext : DbContext
     public DbSet<Sender>          Senders          { get; set; }
     public DbSet<Message>         Messages         { get; set; }
     public DbSet<PriorityMessage> PriorityMessages { get; set; }
+    public DbSet<SenderSubset>    SenderSubsets    { get; set; }
+    public DbSet<SenderSubsetMember> SenderSubsetMembers { get; set; }
 
     // SQLite views (keyless / read-only)
     public DbSet<VSenderWithRating>  VSenderWithRatings  { get; set; }
@@ -86,6 +88,30 @@ public class AppDbContext : DbContext
         {
             e.ToTable("priority_message");
             e.HasIndex(p => p.GmailMessageId).IsUnique();
+        });
+
+        // ── SenderSubset ───────────────────────────────────────────
+        modelBuilder.Entity<SenderSubset>(e =>
+        {
+            e.ToTable("sender_subset");
+            e.HasIndex(s => s.SubsetName).IsUnique();
+        });
+
+        // ── SenderSubsetMember ─────────────────────────────────────
+        modelBuilder.Entity<SenderSubsetMember>(e =>
+        {
+            e.ToTable("sender_subset_member");
+            e.HasKey(m => new { m.SubsetId, m.SenderId });
+
+            e.HasOne(m => m.Subset)
+             .WithMany(s => s.Members)
+             .HasForeignKey(m => m.SubsetId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(m => m.Sender)
+             .WithMany()
+             .HasForeignKey(m => m.SenderId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         // ── Views (keyless) ─────────────────────────────────────────

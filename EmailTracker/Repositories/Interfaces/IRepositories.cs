@@ -56,6 +56,8 @@ public interface ISenderRepository
     Task<Sender>         CreateAsync(Sender sender);
     Task<Sender>         UpdateAsync(Sender sender);
     Task                 UpdateRatingBulkAsync(IEnumerable<int> senderIds, int ratingId);
+    Task<int>            GetBestRatingIdByDomainAsync(string domain);
+    Task                 UpdateRatingByDomainAsync(string domain, int ratingId);
     Task                 SetStatusAsync(int senderId, int statusId);
     Task<IEnumerable<VSenderWithRating>> GetTopSendersForRunAsync(int runId, int limit = 10);
 }
@@ -72,4 +74,12 @@ public interface IPriorityMessageRepository
     Task              RemoveAsync(string gmailMessageId);
     Task<bool>        IsTrackedAsync(string gmailMessageId);
     Task<HashSet<string>> GetAllIdsAsync();
+}
+
+public interface ISenderSubsetRepository
+{
+    Task EnsureSchemaAsync();
+    Task<IEnumerable<SenderSubset>> GetAllAsync();
+    Task<HashSet<int>> GetSenderIdsAsync(int subsetId);
+    Task<SenderSubset> SaveAsync(string subsetName, IEnumerable<int> senderIds);
 }

@@ -24,6 +24,7 @@ builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<ISenderRepository,  SenderRepository>();
 builder.Services.AddScoped<IRatingRepository,           RatingRepository>();
 builder.Services.AddScoped<IPriorityMessageRepository, PriorityMessageRepository>();
+builder.Services.AddScoped<ISenderSubsetRepository,     SenderSubsetRepository>();
 
 // ── Services ─────────────────────────────────────────────────────
 builder.Services.AddScoped<IRunService,         RunService>();
@@ -31,6 +32,7 @@ builder.Services.AddScoped<IMessageService,     MessageService>();
 builder.Services.AddScoped<ISenderService,      SenderService>();
 builder.Services.AddScoped<IRatingService,           RatingService>();
 builder.Services.AddScoped<IPriorityMessageService, PriorityMessageService>();
+builder.Services.AddScoped<ISenderSubsetService,     SenderSubsetService>();
 builder.Services.AddScoped<IGmailIngestService, GmailIngestService>();
 builder.Services.AddSingleton<IngestJobStore>();
 
