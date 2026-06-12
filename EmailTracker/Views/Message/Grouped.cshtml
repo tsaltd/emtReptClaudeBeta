@@ -15,11 +15,11 @@
         margin-bottom: 0;
     }
     .grp-bar .f-label {
-        font-size: .67rem;
+        font-size: .75rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: .6px;
-        color: #555;
+        color: #333;
         margin-bottom: .15rem;
     }
     .grp-bar .form-control, .grp-bar .form-select {
@@ -49,8 +49,8 @@
         justify-content: space-between;
         align-items: center;
         background: #1e2533;
-        color: #555;
-        font-size: .72rem;
+        color: #bbb;
+        font-size: .78rem;
         font-weight: 500;
         letter-spacing: .4px;
         padding: .35rem 1rem;
@@ -75,11 +75,11 @@
     .grp-table thead th {
         background: #f1f3f5;
         padding: .45rem 1rem;
-        font-size: .68rem;
+        font-size: .78rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: .6px;
-        color: #555;
+        color: #333;
         border-bottom: 2px solid #dee2e6;
         white-space: nowrap;
     }
@@ -139,7 +139,7 @@
         padding: .3rem 1rem .3rem 1.25rem;
         border-bottom: 1px solid #e9ecef;
         font-size: 1rem;
-        color: #495057;
+        color: #222;
         font-style: italic;
         text-decoration: underline;
         border-left: 3px solid #dee2e6;
@@ -150,9 +150,9 @@
         background: #fff;
         padding: .35rem 1rem .35rem 2rem;
         border-bottom: 1px solid #f1f3f5;
-        font-size: .875rem;
+        font-size: .925rem;
         font-weight: 600;
-        color: #212529;
+        color: #111;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -160,10 +160,10 @@
     /* ── Leaf row ────────────────────────────────────────────────── */
     .msg-leaf td {
         background: #fff;
-        padding: .2rem 1rem .2rem 2.75rem;
-        border-bottom: 1px solid #f8f8f8;
-        font-size: .775rem;
-        color: #555;
+        padding: .25rem 1rem .25rem 2.75rem;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: .85rem;
+        color: #222;
     }
     .msg-leaf .cell-snippet {
         overflow: hidden;
@@ -200,8 +200,8 @@
     .grp-empty td {
         text-align: center;
         padding: 3rem;
-        color: #555;
-        font-size: .875rem;
+        color: #333;
+        font-size: .9rem;
     }
 
     /* ── Pagination ──────────────────────────────────────────────── */
@@ -213,8 +213,67 @@
         border-top: 1px solid #dee2e6;
         background: #f8f9fa;
     }
-    .grp-pager .page-link { border-radius: 0 !important; font-size: .775rem; }
-    .grp-pager-info { font-size: .75rem; color: #555; }
+    .grp-pager .page-link { border-radius: 0 !important; font-size: .85rem; }
+    .grp-pager-info { font-size: .8rem; color: #333; }
+
+    /* ── Print ────────────────────────────────────────────────────── */
+    .print-header { display: none; }
+
+    @@media print {
+        .grp-bar, .grp-pager, .btn-priority { display: none !important; }
+
+        .print-header {
+            display: block; margin-bottom: .15in; padding-bottom: .08in;
+            border-bottom: 2pt solid #000;
+        }
+        .print-header h2 { font-size: 14pt; font-weight: 700; margin: 0 0 2pt; color: #000; }
+        .print-header .print-meta { font-size: 9pt; color: #000; }
+
+        .grp-status {
+            background: #fff !important; color: #000 !important;
+            border: 1px solid #000; font-size: 9pt; padding: 4pt 8pt;
+        }
+        .grp-status strong { color: #000 !important; }
+
+        .grp-wrap { border: none; }
+        .grp-table { table-layout: auto; font-size: 10pt; }
+        .grp-table .col-star { display: none; }
+        .grp-table thead th {
+            font-size: 9pt; padding: 3pt 6pt; color: #000 !important;
+            background: #eee !important; border-bottom: 1.5pt solid #000;
+        }
+        .grp-table thead th:first-child { display: none; }
+
+        .msg-cea td { background: #fff !important; padding: 4pt 6pt; border-top: 2pt solid #000; }
+        .msg-cea-pill {
+            background: none !important; color: #000 !important;
+            padding: 2pt 0; text-align: left; max-width: none;
+        }
+        .msg-cea-link { color: #000 !important; font-size: 11pt; }
+        .msg-cea-count { background: none !important; color: #000 !important; font-size: 9pt; }
+        .msg-cea-browse { display: none !important; }
+        .rating-group-hdr td { color: #000 !important; font-size: 10pt; background: #ddd !important; }
+
+        .msg-raw td {
+            font-size: 10pt; padding: 2pt 6pt 2pt 12pt;
+            border-left: 2pt solid #000; background: #fff !important; color: #000 !important;
+        }
+        .msg-subject td {
+            font-size: 10pt; font-weight: 700; padding: 2pt 6pt 2pt 18pt;
+            white-space: normal !important; overflow: visible !important;
+            text-overflow: clip !important; color: #000 !important;
+        }
+        .msg-leaf td {
+            font-size: 9pt; padding: 1pt 6pt 1pt 24pt; color: #000 !important;
+        }
+        .msg-leaf td:first-child { display: none; }
+        .msg-leaf .cell-snippet {
+            white-space: normal !important; overflow: visible !important;
+            text-overflow: clip !important;
+        }
+
+        tr { page-break-inside: avoid; }
+    }
 </style>
 }
 
@@ -328,8 +387,23 @@
                 title="Show priority messages only">★ Priority</button>
         <button type="submit" class="btn btn-primary sort-btn me-1">Apply</button>
         <a href="/Message/Grouped" class="btn btn-outline-secondary" id="btn-clear">Clear</a>
+        <button type="button" class="btn btn-outline-secondary sort-btn ms-2" onclick="window.print()" title="Print report">
+            <i class="fas fa-print"></i> Print
+        </button>
     </div>
 </form>
+
+<div class="print-header">
+    <h2>CEA Groups</h2>
+    <div class="print-meta">
+        Printed @DateTime.Now.ToString("MMMM d, yyyy h:mm tt") ·
+        @Model.TotalSenders senders ·
+        Page @Model.Page of @Model.TotalPages
+        @if (!string.IsNullOrEmpty(Model.RatingFilter)) { <span>· Rating: @Model.RatingFilter</span> }
+        @if (!string.IsNullOrEmpty(Model.StatusFilter)) { <span>· Status: @Model.StatusFilter</span> }
+        @if (!string.IsNullOrEmpty(Model.SearchTerm)) { <span>· Search: @Model.SearchTerm</span> }
+    </div>
+</div>
 
 <!-- Status strip -->
 <div class="grp-status">

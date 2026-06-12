@@ -45,3 +45,13 @@ npm-debug.log
 # ── LOGS ─────────────────────────────────────────────────────────
 *.log
 logs/
+
+# ── MISC ─────────────────────────────────────────────────────────
+objbuildcheck/
+*.jsonl
+*.lscache
+.mcp.json
+.vscode/
+.claude/worktrees/
+git.txt
+emer.json
