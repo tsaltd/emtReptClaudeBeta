@@ -60,6 +60,7 @@ public interface ISenderRepository
     Task                 UpdateRatingByDomainAsync(string domain, int ratingId);
     Task                 SetStatusAsync(int senderId, int statusId);
     Task<IEnumerable<VSenderWithRating>> GetTopSendersForRunAsync(int runId, int limit = 10);
+    Task<IEnumerable<(string RatingName, int Count)>> GetRatingCountsAsync(string? searchTerm, string? statusFilter);
 }
 
 public interface IRatingRepository

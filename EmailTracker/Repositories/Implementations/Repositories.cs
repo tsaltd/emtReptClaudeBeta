@@ -259,6 +259,16 @@ public class SenderRepository : ISenderRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<(string RatingName, int Count)>> GetRatingCountsAsync(string? searchTerm, string? statusFilter)
+    {
+        var q = BuildQuery(searchTerm, null, statusFilter);
+        var groups = await q
+            .GroupBy(s => s.RatingName ?? "Unrated")
+            .Select(g => new { RatingName = g.Key, Count = g.Count() })
+            .ToListAsync();
+        return groups.Select(g => (g.RatingName, g.Count));
+    }
+
     private IQueryable<VSenderWithRating> BuildQuery(string? searchTerm, string? ratingFilter, string? statusFilter)
     {
         var q = _db.VSenderWithRatings.Where(s => s.MsgCount > 0);

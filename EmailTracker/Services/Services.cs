@@ -290,6 +290,7 @@ public class MessageService : IMessageService
         }).ToList();
 
         var groups = new List<CeaGroupViewModel>();
+        List<CeaGroupViewModel>? allGroups = null;
         int total  = 0;
 
         if (filter.PriorityOnly)
@@ -314,20 +315,24 @@ public class MessageService : IMessageService
                            : bySenderBase.OrderByDescending(g => g.Count())).ToList();
 
             total = bySender.Count;
-            foreach (var senderGroup in bySender.Skip((page - 1) * pageSize).Take(pageSize))
+            allGroups = new List<CeaGroupViewModel>();
+            foreach (var senderGroup in bySender)
             {
                 var first = senderGroup.First();
-                var fromRawGroups = senderGroup
-                    .GroupBy(m => m.FromRaw ?? "(no from header)")
-                    .OrderByDescending(g => g.Count())
-                    .Select(g => new FromRawGroupViewModel
-                    {
-                        FromRaw  = g.Key,
-                        Messages = g.OrderByDescending(m => m.InternalDate).ToList()
-                    }).ToList();
+                var isPaged = allGroups.Count >= (page - 1) * pageSize && allGroups.Count < page * pageSize;
+                var fromRawGroups = isPaged
+                    ? senderGroup
+                        .GroupBy(m => m.FromRaw ?? "(no from header)")
+                        .OrderByDescending(g => g.Count())
+                        .Select(g => new FromRawGroupViewModel
+                        {
+                            FromRaw  = g.Key,
+                            Messages = g.OrderByDescending(m => m.InternalDate).ToList()
+                        }).ToList()
+                    : [];
 
                 var r1 = ratingVms.FirstOrDefault(r => r.RatingName == first.RatingName);
-                groups.Add(new CeaGroupViewModel
+                var grp = new CeaGroupViewModel
                 {
                     SenderId        = first.SenderId,
                     EmailAddress    = first.EmailAddress,
@@ -337,7 +342,9 @@ public class MessageService : IMessageService
                     ColorCode       = r1?.ColorCode,
                     MsgCount        = senderGroup.Count(),
                     FromRawGroups   = fromRawGroups
-                });
+                };
+                allGroups.Add(grp);
+                if (isPaged) groups.Add(grp);
             }
         }
         else
@@ -409,7 +416,7 @@ public class MessageService : IMessageService
             }
 
             // Per sender: fetch messages with date filter applied at DB level via repository
-            var allGroups = new List<CeaGroupViewModel>();
+            allGroups = new List<CeaGroupViewModel>();
             foreach (var s in allSenders)
             {
                 var rawMsgs = await _msgRepo.SearchAsync(
@@ -480,6 +487,17 @@ public class MessageService : IMessageService
             }
         }
 
+        var ceaRatingCounts = (allGroups ?? groups)
+            .GroupBy(g => new { g.RatingName, g.ColorCode })
+            .Select(g => new RatingCountItem
+            {
+                RatingName = string.IsNullOrEmpty(g.Key.RatingName) ? "Unrated" : g.Key.RatingName,
+                ColorCode  = g.Key.ColorCode,
+                Count      = g.Count()
+            })
+            .OrderBy(rc => ratingVms.FirstOrDefault(r => r.RatingName == rc.RatingName)?.SortOrder ?? int.MaxValue)
+            .ToList();
+
         return new MessageGroupedViewModel
         {
             SenderId          = senderId,
@@ -497,7 +515,8 @@ public class MessageService : IMessageService
             PageSize          = pageSize,
             TotalSenders      = total,
             CeaGroups         = groups,
-            AvailableRatings  = ratingVms
+            AvailableRatings  = ratingVms,
+            RatingCounts      = ceaRatingCounts
         };
     }
 
@@ -558,6 +577,18 @@ public class SenderService : ISenderService
             SortOrder  = r.SortOrder,
             ColorCode  = r.ColorCode
         });
+
+        var ratingCounts = await _senderRepo.GetRatingCountsAsync(filters.SearchTerm, filters.StatusFilter);
+        var ratingLookup = ratings.ToDictionary(r => r.RatingName, r => r);
+        filters.RatingCounts = ratingCounts
+            .Select(rc => new RatingCountItem
+            {
+                RatingName = rc.RatingName,
+                ColorCode  = ratingLookup.TryGetValue(rc.RatingName, out var r) ? r.ColorCode : null,
+                Count      = rc.Count
+            })
+            .OrderBy(rc => ratingLookup.TryGetValue(rc.RatingName, out var r) ? r.SortOrder : int.MaxValue)
+            .ToList();
 
         return filters;
     }
@@ -635,11 +666,22 @@ public class SenderService : ISenderService
             .ThenBy(s => s.EmailAddress, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        var periodRatingCounts = rows
+            .GroupBy(s => new { s.RatingName, s.ColorCode })
+            .OrderBy(g => ratingSort.TryGetValue(g.First().RatingId, out var so) && so > 0 ? so : int.MaxValue)
+            .Select(g => new RatingCountItem
+            {
+                RatingName = g.Key.RatingName,
+                ColorCode  = g.Key.ColorCode,
+                Count      = g.Count()
+            }).ToList();
+
         return new SenderPeriodListViewModel
         {
-            DateFrom = dateFrom,
-            DateTo = dateTo,
-            Senders = rows
+            DateFrom     = dateFrom,
+            DateTo       = dateTo,
+            Senders      = rows,
+            RatingCounts = periodRatingCounts
         };
     }
 
@@ -1253,6 +1295,19 @@ public class GmailIngestService : IGmailIngestService
         }
 
         _db.Messages.AddRange(messages);
+        await _db.SaveChangesAsync();
+
+        // Resync msg_count from actual message rows so senders outside the
+        // current batch window aren't left at zero.
+        progress?.Invoke("Resyncing sender message counts…");
+        var actualCounts = await _db.Messages
+            .GroupBy(m => m.SenderId)
+            .Select(g => new { SenderId = g.Key, Count = g.Count() })
+            .ToListAsync();
+        var countMap = actualCounts.ToDictionary(x => x.SenderId, x => x.Count);
+        var allSenders = await _db.Senders.ToListAsync();
+        foreach (var s in allSenders)
+            s.MsgCount = countMap.TryGetValue(s.SenderId, out var c) ? c : 0;
         await _db.SaveChangesAsync();
 
         return new IngestResultViewModel

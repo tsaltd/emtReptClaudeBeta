@@ -156,6 +156,7 @@ public class SenderSearchViewModel
     public IEnumerable<RatingOptionViewModel>  AvailableRatings { get; set; } = [];
     public int                                 TotalCount   { get; set; }
     public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+    public List<RatingCountItem> RatingCounts { get; set; } = [];
 }
 
 public class SenderSubsetOptionViewModel
@@ -235,6 +236,7 @@ public class SenderPeriodListViewModel
     public string? DateTo { get; set; }
     public IEnumerable<SenderPeriodRowViewModel> Senders { get; set; } = [];
     public int TotalCount => Senders.Count();
+    public List<RatingCountItem> RatingCounts { get; set; } = [];
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -321,6 +323,7 @@ public class MessageGroupedViewModel
 
     public IEnumerable<CeaGroupViewModel>     CeaGroups        { get; set; } = [];
     public IEnumerable<RatingOptionViewModel> AvailableRatings { get; set; } = [];
+    public List<RatingCountItem> RatingCounts { get; set; } = [];
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -393,6 +396,13 @@ public class RatingOptionViewModel
     public string  RatingName { get; set; } = string.Empty;
     public int     SortOrder  { get; set; }
     public string? ColorCode  { get; set; }
+}
+
+public class RatingCountItem
+{
+    public string  RatingName { get; set; } = string.Empty;
+    public string? ColorCode  { get; set; }
+    public int     Count      { get; set; }
 }
 
 // ════════════════════════════════════════════════════════════════

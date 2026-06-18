@@ -68,11 +68,11 @@
     .grp-table {
         width: 100%;
         border-collapse: collapse;
-        table-layout: fixed;
+        table-layout: auto;
     }
     .grp-table .col-star    { width: 32px; }
-    .grp-table .col-date    { width: 140px; }
-    .grp-table .col-snippet { width: auto; }
+    .grp-table .col-date    { width: 140px; white-space: nowrap; }
+    .grp-table .col-snippet { }
     .grp-table thead th {
         background: #f1f3f5;
         padding: .45rem 1rem;
@@ -385,6 +385,8 @@
         </button>
     </div>
 </form>
+
+@await Html.PartialAsync("_RatingCountBar", Model.RatingCounts)
 
 <div class="print-header">
     <h2>CEA Report</h2>

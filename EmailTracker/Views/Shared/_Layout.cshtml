@@ -48,7 +48,7 @@
         }
         #sidebar .brand span { color: var(--accent); }
 
-        #sidebar nav { flex: 1; padding: .75rem 0; overflow: hidden; }
+        #sidebar nav { flex: 1; padding: .75rem 0; overflow-y: auto; }
         #sidebar nav a {
             display: flex; align-items: center; gap: .75rem;
             padding: .65rem 1.5rem; color: var(--sidebar-text);
@@ -90,12 +90,12 @@
         .stat-label  { font-size: .8rem; color: #6c757d; margin-top: .25rem; }
 
         /* Tables */
-        .table-card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow: hidden; }
-        .table-card .table { margin: 0; font-size: .95rem; }
+        .table-card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow-x: auto; }
+        .table-card .table { margin: 0; font-size: .92rem; }
         .table-card .table thead th {
             background: #f8f9fa; border-bottom: 2px solid #dee2e6;
-            font-weight: 600; font-size: .875rem; text-transform: uppercase;
-            letter-spacing: .5px; color: #495057;
+            font-weight: 600; font-size: .82rem; text-transform: uppercase;
+            letter-spacing: .5px; color: #495057; white-space: nowrap;
         }
         .table-card .table tbody tr:hover { background: #f0f4ff; cursor: pointer; }
 
@@ -241,6 +241,59 @@
         body.reading-mode #menubar { font-size: .95rem; }
         body.reading-mode .menubar-item { font-size: .95rem; padding: .55rem .95rem; }
         body.reading-mode .menubar-dropdown-panel a { font-size: .95rem; }
+
+        /* ── Rating count bar ─────────────────────────────────────── */
+        .rating-count-bar {
+            display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+            padding: .5rem .75rem; margin-bottom: .5rem;
+            background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+        }
+        .rc-badge {
+            display: inline-flex; align-items: center; gap: .35rem;
+            padding: .25rem .6rem; border-radius: 4px;
+            font-size: .82rem; font-weight: 600; line-height: 1.2;
+            color: #fff; border: 1px solid rgba(0,0,0,.15);
+        }
+        .rc-badge .rc-name { font-weight: 600; }
+        .rc-badge .rc-num {
+            background: rgba(0,0,0,.25); padding: .1rem .4rem;
+            border-radius: 3px; font-weight: 700; font-size: .78rem;
+            min-width: 1.4em; text-align: center;
+        }
+        .rc-total {
+            margin-left: auto; font-size: .85rem; font-weight: 600; color: #333;
+        }
+        body.reading-mode .rating-count-bar { font-size: .95rem; }
+        body.reading-mode .rc-badge { font-size: .92rem; padding: .3rem .7rem; }
+        body.reading-mode .rc-badge .rc-num { font-size: .88rem; }
+        body.reading-mode .rc-total { font-size: .95rem; }
+
+        /* ── Mobile responsiveness ───────────────────────────────– */
+        @@media (max-width: 768px) {
+            #topbar { flex-direction: column; gap: .5rem; align-items: flex-start; padding: .75rem .75rem; }
+            #topbar h1 { font-size: 1rem; }
+            #topbar > div { width: 100%; justify-content: space-between; }
+            #menubar { font-size: .75rem; padding: 0 .5rem; }
+            .menubar-item { padding: .4rem .6rem; font-size: .75rem; }
+            #content { padding: 1rem .75rem; }
+            .table-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        }
+        @@media (max-width: 576px) {
+            #sidebar { width: var(--sidebar-collapsed-width); }
+            #sidebar.collapsed { width: var(--sidebar-collapsed-width); }
+            #main { margin-left: var(--sidebar-collapsed-width); }
+            #main.sidebar-collapsed { margin-left: var(--sidebar-collapsed-width); }
+            #sidebar nav a { padding: .65rem .75rem; font-size: 0; }
+            #sidebar nav a i { width: 20px; }
+            .sidebar-toggle-row { display: flex; }
+            .brand { display: none; }
+            .sidebar-footer { display: none; }
+            #topbar h1 { font-size: .9rem; }
+            #content { padding: .75rem; font-size: .9rem; }
+            .table-card .table { font-size: .8rem; }
+            .table-card .table thead th { padding: .3rem .5rem; font-size: .65rem; }
+            .table-card .table tbody td { padding: .3rem .5rem; }
+        }
 
         /* ── Print ───────────────────────────────────────────────── */
         @@media print {

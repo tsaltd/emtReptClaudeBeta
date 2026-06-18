@@ -1,0 +1,22 @@
+@model List<EmailTracker.ViewModels.RatingCountItem>
+@{
+    var lightColors = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        { "yellow", "#ffc107", "#ffeb3b", "#fff176", "#ffff00",
+          "lime", "#cddc39", "cyan", "#00bcd4", "#e0e0e0", "white", "#fff", "#ffffff" };
+    bool IsLight(string? c) => !string.IsNullOrEmpty(c) && lightColors.Contains(c);
+}
+
+@if (Model.Any())
+{
+    <div class="rating-count-bar">
+        @foreach (var rc in Model)
+        {
+            var textColor = IsLight(rc.ColorCode) ? "#212529" : "#fff";
+            <span class="rc-badge" style="background:@(rc.ColorCode ?? "#6c757d"); color:@textColor">
+                <span class="rc-name">@rc.RatingName</span>
+                <span class="rc-num">@rc.Count</span>
+            </span>
+        }
+        <span class="rc-total">Total: <strong>@Model.Sum(r => r.Count)</strong></span>
+    </div>
+}

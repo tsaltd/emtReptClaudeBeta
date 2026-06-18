@@ -175,8 +175,9 @@
 </div>
 
 @* ── Results count ────────────────────────────────────────────── *@
-<div class="d-flex justify-content: space-between align-items-center px-1 py-1 border-bottom">
-    <span class="small">@Model.TotalCount.ToString("N0") sender(s) &nbsp;·&nbsp; Page @Model.Page of @Model.TotalPages</span>
+@await Html.PartialAsync("_RatingCountBar", Model.RatingCounts)
+<div class="d-flex align-items-center px-1 py-1 border-bottom">
+    <span class="small">Page @Model.Page of @Model.TotalPages</span>
 </div>
 
 @* ── Table ───────────────────────────────────────────────────── *@

@@ -101,7 +101,7 @@
             <input id="dateTo" name="dateTo" type="date" class="form-control form-control-sm" style="width:145px" value="@Model.DateTo" />
             <button type="submit" class="btn btn-sm btn-primary">Apply</button>
             <a href="/Sender/Period" class="btn btn-sm btn-outline-secondary">Clear</a>
-            <span class="small text-muted ms-2">@Model.TotalCount sender(s)</span>
+            <span class="small text-muted ms-2">@Model.TotalCount sender(s) total</span>
         </form>
 
         <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
@@ -127,6 +127,8 @@
     </div>
 </div>
 
+@await Html.PartialAsync("_RatingCountBar", Model.RatingCounts)
+
 <div class="sheet-wrap">
     <table class="sheet-table">
         <thead>
@@ -143,24 +145,24 @@
             {
                 <tr><td colspan="3" class="text-center text-muted py-4">No senders found for selected period.</td></tr>
             }
-            @{ var rowIndex = 0; }
             @foreach (var ratingGroup in Model.Senders.GroupBy(s => new { s.RatingName, s.ColorCode }))
             {
+                var groupItems = ratingGroup.ToList();
                 <tr class="sheet-group-row">
                     <td colspan="3">
                         <span class="rating-cell">
                             <span class="rating-dot" style="background:@(ratingGroup.Key.ColorCode ?? "#6c757d");"></span>
                             <span class="rating-name">@ratingGroup.Key.RatingName</span>
                         </span>
-                        @ratingGroup.Count() sender(s)
+                        @groupItems.Count sender(s)
                     </td>
                 </tr>
 
-                @foreach (var s in ratingGroup)
+                for (var gi = 0; gi < groupItems.Count; gi++)
                 {
-                    rowIndex++;
+                    var s = groupItems[gi];
                     <tr data-sender-id="@s.SenderId" data-email="@s.EmailAddress">
-                        <td class="sheet-index">@rowIndex</td>
+                        <td class="sheet-index">@(gi + 1)</td>
                         <td class="sheet-select">
                             <input type="checkbox" class="row-select" data-sender-id="@s.SenderId" />
                         </td>
